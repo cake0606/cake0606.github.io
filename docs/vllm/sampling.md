@@ -64,7 +64,6 @@ GREEDYF放在第一位， 处于最优先判定。
 
 2. 节省一次temperature张量拷贝
 ```py
-
     def _make_sampling_metadata(self) -> SamplingMetadata:
         num_reqs = self.num_reqs
         if not self.all_greedy:
@@ -103,19 +102,7 @@ GREEDYF放在第一位， 处于最优先判定。
 ```py
  greedy_sampled = self.greedy_sample(logits)
 ```
-3. 混合batch的处理
-首先对logits进行argmax：
 ```py
- greedy_sampled = self.greedy_sample(logits)
- ```
- 3. 混合batch的处理
-
-首先对logits进行argmax：
-```py
- greedy_sampled = self.greedy_sample(logits)
- ```
-```py
-
     @staticmethod
     def apply_temperature(
         logits: torch.Tensor,
@@ -184,3 +171,13 @@ top p按累积概率保留：
     return logits.scatter_(dim=-1, index=logits_idx, src=logits_sort)
 ```
 把logits_sort的值写回logits。
+
+```py
+        sampled = torch.where(
+            sampling_metadata.temperature < _SAMPLING_EPS,
+            greedy_sampled,
+            random_sampled,
+            out=greedy_sampled,  # Reuse tensor
+        )
+```
+
