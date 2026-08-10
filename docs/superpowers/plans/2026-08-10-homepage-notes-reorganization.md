@@ -207,7 +207,7 @@ Add `<script src="../note-paths.js"></script>` immediately before the existing `
 
 - [ ] **Step 7: Add static viewer integration checks**
 
-Extend `tests/test_site_structure.py` to assert `note.html` loads `note-paths.js` before `note.js`, each standalone compatibility page loads both scripts in that order and uses its updated `data-note-path`, and no old `rl/ppo.md`, `rl/grpo.md`, or `rl/concepts.md` literal remains in `docs/note.js`, `docs/note.html`, or the compatibility-page body attributes.
+Extend `tests/test_site_structure.py` to assert `note.html` loads `note-paths.js` before `note.js`, each standalone compatibility page loads both scripts in that order, and every updated `data-note-path` resolves to an existing Markdown file below `docs/`.
 
 - [ ] **Step 8: Run the complete automated suite**
 
