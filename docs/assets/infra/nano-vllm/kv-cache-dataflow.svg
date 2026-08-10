@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">nano-vLLM KV Cache 数据流</title>
+  <desc id="desc">Sequence 经 BlockManager 生成 block_table，由 prepare_prefill / prepare_decode 转换为 slot_mapping，最后由 store_kvcache 写入全局 KV Cache Tensor。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#8e5f68"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#8e5f68" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .canvas { fill: #ffffff; }
+      .layer { stroke: #b98991; stroke-width: 2; }
+      .layer-logic { fill: #faf5f6; }
+      .layer-mapping { fill: #f7f1f2; }
+      .layer-physical { fill: #f4ecee; }
+      .node { fill: #ffffff; stroke: #b98991; stroke-width: 2; filter: url(#shadow); }
+      .node-accent { fill: #f4e8ea; }
+      .flow { fill: none; stroke: #8e5f68; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow); }
+      .layer-title { fill: #8e5f68; font: 700 18px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; letter-spacing: 0.08em; }
+      .title { fill: #3f3638; font: 700 25px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .node-title { fill: #3f3638; font: 700 16px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .node-title-small { fill: #3f3638; font: 700 14px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .node-copy { fill: #6d6264; font: 13px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .hint { fill: #8e5f68; font: 12px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+    </style>
+  </defs>
+
+  <rect class="canvas" width="1200" height="560"/>
+  <text class="title" x="40" y="42">nano-vLLM KV Cache 数据流</text>
+  <text class="hint" x="1160" y="41" text-anchor="end">逻辑块 → 物理槽位 → KV 写入</text>
+
+  <g aria-label="逻辑层">
+    <rect class="layer layer-logic" x="40" y="70" width="540" height="420" rx="22"/>
+    <text class="layer-title" x="68" y="105">逻辑层</text>
+    <path d="M 40 122 H 580" stroke="#d8b8be" stroke-width="1"/>
+
+    <rect class="node" x="75" y="145" width="220" height="75" rx="15"/>
+    <text class="node-title" x="185" y="178" text-anchor="middle">Sequence</text>
+    <text class="node-copy" x="185" y="201" text-anchor="middle">token IDs · position</text>
+
+    <rect class="node" x="75" y="305" width="220" height="90" rx="15"/>
+    <text class="node-title" x="185" y="342" text-anchor="middle">BlockManager</text>
+    <text class="node-copy" x="185" y="367" text-anchor="middle">分配 / 复用 / 回收物理块</text>
+
+    <rect class="node node-accent" x="360" y="305" width="180" height="90" rx="15"/>
+    <text class="node-title" x="450" y="342" text-anchor="middle">block_table</text>
+    <text class="node-copy" x="450" y="367" text-anchor="middle">逻辑块 → 物理块</text>
+  </g>
+
+  <g aria-label="映射层">
+    <rect class="layer layer-mapping" x="620" y="70" width="250" height="420" rx="22"/>
+    <text class="layer-title" x="648" y="105">映射层</text>
+    <path d="M 620 122 H 870" stroke="#d8b8be" stroke-width="1"/>
+
+    <rect class="node" x="655" y="145" width="180" height="95" rx="15"/>
+    <text class="node-title-small" x="745" y="178" text-anchor="middle">prepare_prefill /</text>
+    <text class="node-title-small" x="745" y="199" text-anchor="middle">prepare_decode</text>
+    <text class="node-copy" x="745" y="222" text-anchor="middle">展开 token 位置</text>
+
+    <rect class="node node-accent" x="655" y="315" width="180" height="80" rx="15"/>
+    <text class="node-title" x="745" y="348" text-anchor="middle">slot_mapping</text>
+    <text class="node-copy" x="745" y="372" text-anchor="middle">当前 token 的写入槽位</text>
+  </g>
+
+  <g aria-label="物理层">
+    <rect class="layer layer-physical" x="910" y="70" width="250" height="420" rx="22"/>
+    <text class="layer-title" x="938" y="105">物理层</text>
+    <path d="M 910 122 H 1160" stroke="#d8b8be" stroke-width="1"/>
+
+    <rect class="node" x="945" y="145" width="180" height="95" rx="15"/>
+    <text class="node-title" x="1035" y="184" text-anchor="middle">store_kvcache</text>
+    <text class="node-copy" x="1035" y="211" text-anchor="middle">按 slot 写入 K / V</text>
+
+    <rect class="node node-accent" x="945" y="315" width="180" height="100" rx="15"/>
+    <text class="node-title" x="1035" y="350" text-anchor="middle">KV Cache Tensor</text>
+    <text class="node-copy" x="1035" y="375" text-anchor="middle">layers × blocks × slots</text>
+    <g aria-hidden="true" transform="translate(978 391)">
+      <rect x="0" y="0" width="19" height="9" rx="2" fill="#dcbcc2"/>
+      <rect x="23" y="0" width="19" height="9" rx="2" fill="#cfa6ae"/>
+      <rect x="46" y="0" width="19" height="9" rx="2" fill="#dcbcc2"/>
+      <rect x="69" y="0" width="19" height="9" rx="2" fill="#cfa6ae"/>
+      <rect x="92" y="0" width="19" height="9" rx="2" fill="#dcbcc2"/>
+    </g>
+  </g>
+
+  <path class="flow" d="M 185 220 V 305"/>
+  <path class="flow" d="M 295 350 H 360"/>
+  <path class="flow" d="M 540 350 H 598 Q 607 350 607 341 V 202 Q 607 193 616 193 H 655"/>
+  <path class="flow" d="M 745 240 V 315"/>
+  <path class="flow" d="M 835 355 H 888 Q 897 355 897 346 V 202 Q 897 193 906 193 H 945"/>
+  <path class="flow" d="M 1035 240 V 315"/>
+</svg>

@@ -3,6 +3,7 @@ from pathlib import Path
 import re
 import unittest
 from urllib.parse import parse_qs, urlparse
+import xml.etree.ElementTree as ET
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -389,6 +390,40 @@ class ViewerIntegrationTests(unittest.TestCase):
                     any("/lib/languages/" in source for source in parser.script_sources),
                     parser.script_sources,
                 )
+
+
+class InfraNotePilotTests(unittest.TestCase):
+    NOTE_PATH = DOCS_DIR / "infra" / "nano-vllm" / "kvcache_and_paged_attention.md"
+    DRAWIO_PATH = DOCS_DIR / "assets" / "infra" / "nano-vllm" / "kv-cache-dataflow.drawio"
+    SVG_PATH = DOCS_DIR / "assets" / "infra" / "nano-vllm" / "kv-cache-dataflow.svg"
+
+    def test_kv_cache_diagram_has_editable_source_and_accessible_svg(self):
+        """The published diagram must stay editable, scalable, and understandable."""
+        self.assertTrue(self.DRAWIO_PATH.is_file())
+        self.assertTrue(self.SVG_PATH.is_file())
+
+        drawio_root = ET.parse(self.DRAWIO_PATH).getroot()
+        self.assertEqual(drawio_root.tag, "mxfile")
+        self.assertIsNotNone(drawio_root.find("./diagram/mxGraphModel/root"))
+
+        svg_root = ET.parse(self.SVG_PATH).getroot()
+        self.assertEqual(svg_root.attrib.get("viewBox"), "0 0 1200 560")
+        self.assertEqual(svg_root.attrib.get("role"), "img")
+        self.assertEqual(svg_root.attrib.get("aria-labelledby"), "title desc")
+        svg_text = " ".join(svg_root.itertext())
+        for label in (
+            "逻辑层",
+            "映射层",
+            "物理层",
+            "Sequence",
+            "BlockManager",
+            "block_table",
+            "prepare_prefill / prepare_decode",
+            "slot_mapping",
+            "store_kvcache",
+            "KV Cache Tensor",
+        ):
+            self.assertIn(label, svg_text)
 
 
 if __name__ == "__main__":
