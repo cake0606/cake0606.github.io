@@ -58,7 +58,7 @@ if self.temperature < _SAMPLING_EPS:
 
 下面的流程图先展示 `_MAX_TEMP` 钳位，再展示 `_SAMPLING_EPS` 判定，最后连接 batch 内的实际执行路径。图中的三条 batch 路径并不是三套独立调度器，而是 `Sampler.sample()` 根据 `all_greedy` 和 `all_random` 选择的快路径。
 
-![vLLM Greedy Sampling 流程](../../assets/infra/vllm/greedy-sampling-flow.svg?v=20260810-3)
+![vLLM Greedy Sampling 流程](../../assets/infra/vllm/greedy-sampling-flow.svg?v=20260811-1)
 
 ## Batch 聚合
 
