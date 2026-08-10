@@ -425,6 +425,45 @@ class InfraNotePilotTests(unittest.TestCase):
         ):
             self.assertIn(label, svg_text)
 
+    def test_kv_cache_note_has_the_pilot_structure(self):
+        """The pilot note must present one coherent, reproducible mapping walkthrough."""
+        markdown = self.NOTE_PATH.read_text(encoding="utf-8")
+        self.assertTrue(markdown.startswith("# nano-vLLM：KV Cache 与 Paged Attention\n"))
+        self.assertNotIn("---\nid:", markdown)
+        self.assertNotIn("把这一段格式变成图", markdown)
+        self.assertIn(
+            "![nano-vLLM KV Cache 数据流](../../assets/infra/nano-vllm/kv-cache-dataflow.svg)",
+            markdown,
+        )
+
+        expected_sections = (
+            "## 这篇笔记解决什么问题",
+            "## 三层数据流",
+            "## 全局 KV Cache Tensor",
+            "## BlockManager 生命周期",
+            "## 从 block_table 到 slot_mapping",
+            "## 完整映射示例",
+            "## 关键结论与常见误区",
+        )
+        positions = [markdown.index(section) for section in expected_sections]
+        self.assertEqual(positions, sorted(positions))
+
+        for required in (
+            "[2, num_layers, num_blocks, block_size, num_kv_heads, head_dim]",
+            "slot = block_id * block_size + offset",
+            "block_size = 4",
+            "block_table = [7, 2]",
+            "slots = [28, 29, 30, 31, 8, 9]",
+            "can_allocate",
+            "allocate",
+            "may_append",
+            "hash_blocks",
+            "deallocate",
+            "ref_count",
+            "完整块",
+        ):
+            self.assertIn(required, markdown)
+
 
 if __name__ == "__main__":
     unittest.main()
