@@ -736,6 +736,30 @@ class InfraNotePilotTests(unittest.TestCase):
                     f"{first_id} overlaps {second_id}",
                 )
 
+    def test_greedy_sampling_connectors_clear_lane_labels(self):
+        """Execution branches must not obscure the visible lane heading."""
+        svg_root = ET.parse(self.VLLM_SAMPLING_SVG_PATH).getroot()
+        lane_label = next(
+            element
+            for element in svg_root.iter(f"{SVG_NAMESPACE}text")
+            if (element.text or "").strip() == "BATCH EXECUTION"
+        )
+        label_x = float(lane_label.attrib["x"])
+        label_y = float(lane_label.attrib["y"])
+        label_bounds = (label_x, label_y - 18, label_x + 190, label_y + 4)
+        _, edges = self._greedy_svg_geometry()
+
+        for edge_id, edge in edges.items():
+            points = parse_orthogonal_path(edge.attrib["d"])
+            segments = zip(points, points[1:])
+            self.assertFalse(
+                any(
+                    segment_enters_bounds(segment, label_bounds)
+                    for segment in segments
+                ),
+                f"{edge_id} enters the BATCH EXECUTION label",
+            )
+
     def test_greedy_sampling_arrow_approaches_are_visible(self):
         """Every arrow needs a visible shaft before its marker begins."""
         _, edges = self._greedy_svg_geometry()

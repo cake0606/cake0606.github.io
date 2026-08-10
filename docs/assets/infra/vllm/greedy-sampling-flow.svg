@@ -83,7 +83,7 @@
   <text x="600" y="461" class="label">all_random</text>
   <rect data-node="mixed" x="920" y="430" width="220" height="50" rx="14" class="node" />
   <text x="1030" y="461" class="label">mixed batch</text>
-  <path d="M520 373 V394 H165 V430" class="edge" data-edge="e13" data-source="metadata" data-target="all-greedy" />
+  <path d="M520 373 V410 H306 V455 H270" class="edge" data-edge="e13" data-source="metadata" data-target="all-greedy" />
   <path d="M600 373 V430" class="edge" data-edge="e14" data-source="metadata" data-target="all-random" />
   <path d="M680 373 V394 H1030 V430" class="edge" data-edge="e15" data-source="metadata" data-target="mixed" />
 
