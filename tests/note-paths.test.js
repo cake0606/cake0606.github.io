@@ -6,8 +6,8 @@ const NotePaths = require("../docs/note-paths.js");
 
 test("normalizes approved relative Markdown paths", () => {
   assert.equal(
-    NotePaths.sanitizeNotePath("infra/vllm/scheduler.md"),
-    "infra/vllm/scheduler.md"
+    NotePaths.sanitizeNotePath("infra/vllm/sampling.md"),
+    "infra/vllm/sampling.md"
   );
   assert.equal(
     NotePaths.sanitizeNotePath("infra/cuda/基础.md"),
@@ -22,9 +22,9 @@ test("rejects unsafe or unsupported note paths", () => {
     "llm/../secret.md",
     "/llm/rl/ppo.md",
     "https://example.com/a.md",
-    "infra\\vllm\\scheduler.md",
-    "infra/vllm/scheduler.txt",
-    "infra//vllm/scheduler.md"
+    "infra\\vllm\\sampling.md",
+    "infra/vllm/sampling.txt",
+    "infra//vllm/sampling.md"
   ];
 
   invalidPaths.forEach((path) => {
@@ -38,16 +38,16 @@ test("returns the sibling collection for an organized note", () => {
     ["llm/rl/ppo.md", "llm/rl/grpo.md"]
   );
   assert.deepEqual(
-    NotePaths.getCollectionForPath("infra/vllm/scheduler.md").items.map((item) => item.path),
-    ["infra/vllm/sampling.md", "infra/vllm/scheduler.md"]
+    NotePaths.getCollectionForPath("infra/vllm/sampling.md").items.map((item) => item.path),
+    ["infra/vllm/sampling.md"]
   );
   assert.equal(NotePaths.getCollectionForPath("unlisted/note.md"), null);
 });
 
 test("builds encoded viewer links at root and compatibility-page depth", () => {
   assert.equal(
-    NotePaths.createViewerHref("infra/vllm/scheduler.md", ""),
-    "note.html?path=infra%2Fvllm%2Fscheduler.md"
+    NotePaths.createViewerHref("infra/vllm/sampling.md", ""),
+    "note.html?path=infra%2Fvllm%2Fsampling.md"
   );
   assert.equal(
     NotePaths.createViewerHref("llm/rl/ppo.md", "../"),

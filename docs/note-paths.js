@@ -32,8 +32,7 @@
     "infra/vllm": {
       title: "vLLM",
       items: [
-        { title: "Sampling", path: "infra/vllm/sampling.md" },
-        { title: "Scheduler", path: "infra/vllm/scheduler.md" }
+        { title: "Sampling", path: "infra/vllm/sampling.md" }
       ]
     },
     "llm/rl": {

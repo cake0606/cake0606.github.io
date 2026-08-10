@@ -51,7 +51,6 @@ EXPECTED_NOTE_PATHS = (
     "infra/nano-vllm/Scheduler.md",
     "infra/nano-vllm/struct.md",
     "infra/vllm/sampling.md",
-    "infra/vllm/scheduler.md",
     "llm/rl/ppo.md",
     "llm/rl/grpo.md",
     "llm/concepts/concepts.md",
@@ -610,11 +609,22 @@ class InfraNotePilotTests(unittest.TestCase):
     DRAWIO_PATH = DOCS_DIR / "assets" / "infra" / "nano-vllm" / "kv-cache-dataflow.drawio"
     SVG_PATH = DOCS_DIR / "assets" / "infra" / "nano-vllm" / "kv-cache-dataflow.svg"
     VLLM_SAMPLING_NOTE_PATH = DOCS_DIR / "infra" / "vllm" / "sampling.md"
+    VLLM_REMOVED_SCHEDULER_NOTE_PATH = (
+        DOCS_DIR / "infra" / "vllm" / "scheduler.md"
+    )
     VLLM_SAMPLING_DRAWIO_PATH = (
-        DOCS_DIR / "assets" / "infra" / "vllm" / "greedy-sampling-flow.drawio"
+        DOCS_DIR
+        / "assets"
+        / "infra"
+        / "vllm"
+        / "greedy-random-sampling-flow.drawio"
     )
     VLLM_SAMPLING_SVG_PATH = (
-        DOCS_DIR / "assets" / "infra" / "vllm" / "greedy-sampling-flow.svg"
+        DOCS_DIR
+        / "assets"
+        / "infra"
+        / "vllm"
+        / "greedy-random-sampling-flow.svg"
     )
 
     def test_kv_cache_diagram_has_editable_source_and_accessible_svg(self):
@@ -684,19 +694,29 @@ class InfraNotePilotTests(unittest.TestCase):
         ):
             self.assertIn(required, markdown)
 
-    def test_greedy_sampling_diagram_has_editable_source_and_accessible_svg(self):
+    def test_greedy_random_sampling_diagram_has_editable_source_and_accessible_svg(self):
         """The sampling flow must be editable and readable in the note viewer."""
         self.assertTrue(self.VLLM_SAMPLING_DRAWIO_PATH.is_file())
         self.assertTrue(self.VLLM_SAMPLING_SVG_PATH.is_file())
 
         drawio_root = ET.parse(self.VLLM_SAMPLING_DRAWIO_PATH).getroot()
         self.assertEqual(drawio_root.tag, "mxfile")
+        drawio_diagram = drawio_root.find("./diagram")
+        self.assertIsNotNone(drawio_diagram)
+        self.assertEqual(
+            drawio_diagram.attrib.get("name"),
+            "Greedy and Random Sampling Flow",
+        )
         self.assertIsNotNone(drawio_root.find("./diagram/mxGraphModel/root"))
 
         svg_root = ET.parse(self.VLLM_SAMPLING_SVG_PATH).getroot()
         self.assertEqual(svg_root.attrib.get("viewBox"), "0 0 1200 700")
         self.assertEqual(svg_root.attrib.get("role"), "img")
         self.assertEqual(svg_root.attrib.get("aria-labelledby"), "title desc")
+        self.assertEqual(
+            svg_root.find(f"{SVG_NAMESPACE}title").text,
+            "vLLM Greedy 与 Random Sampling 流程",
+        )
         svg_text = " ".join(svg_root.itertext())
         for label in (
             "temperature",
@@ -712,7 +732,7 @@ class InfraNotePilotTests(unittest.TestCase):
         ):
             self.assertIn(label, svg_text)
 
-    def _greedy_svg_geometry(self):
+    def _greedy_random_svg_geometry(self):
         svg_root = ET.parse(self.VLLM_SAMPLING_SVG_PATH).getroot()
         node_elements = [
             element for element in svg_root.iter() if "data-node" in element.attrib
@@ -738,9 +758,9 @@ class InfraNotePilotTests(unittest.TestCase):
         }
         return nodes, edges
 
-    def test_greedy_sampling_svg_and_drawio_keep_the_same_topology(self):
+    def test_greedy_random_sampling_svg_and_drawio_keep_the_same_topology(self):
         """Published and editable diagrams must describe the same flow graph."""
-        nodes, edges = self._greedy_svg_geometry()
+        nodes, edges = self._greedy_random_svg_geometry()
         self.assertTrue(nodes)
         self.assertTrue(edges)
 
@@ -763,9 +783,9 @@ class InfraNotePilotTests(unittest.TestCase):
         self.assertEqual(set(nodes), drawio_nodes)
         self.assertEqual(svg_edges, drawio_edges)
 
-    def test_greedy_sampling_connectors_clear_nodes_and_each_other(self):
+    def test_greedy_random_sampling_connectors_clear_nodes_and_each_other(self):
         """Connectors must neither cross unrelated nodes nor overlap each other."""
-        nodes, edges = self._greedy_svg_geometry()
+        nodes, edges = self._greedy_random_svg_geometry()
         bounds = {
             node_id: svg_node_bounds(node) for node_id, node in nodes.items()
         }
@@ -802,7 +822,7 @@ class InfraNotePilotTests(unittest.TestCase):
                     f"{first_id} overlaps {second_id}",
                 )
 
-    def test_greedy_sampling_connectors_clear_lane_labels(self):
+    def test_greedy_random_sampling_connectors_clear_lane_labels(self):
         """Execution branches must not obscure the visible lane heading."""
         svg_root = ET.parse(self.VLLM_SAMPLING_SVG_PATH).getroot()
         lane_label = next(
@@ -813,7 +833,7 @@ class InfraNotePilotTests(unittest.TestCase):
         label_x = float(lane_label.attrib["x"])
         label_y = float(lane_label.attrib["y"])
         label_bounds = (label_x, label_y - 18, label_x + 190, label_y + 4)
-        _, edges = self._greedy_svg_geometry()
+        _, edges = self._greedy_random_svg_geometry()
 
         for edge_id, edge in edges.items():
             points = parse_orthogonal_path(edge.attrib["d"])
@@ -826,9 +846,9 @@ class InfraNotePilotTests(unittest.TestCase):
                 f"{edge_id} enters the BATCH EXECUTION label",
             )
 
-    def test_greedy_sampling_arrow_approaches_are_visible(self):
+    def test_greedy_random_sampling_arrow_approaches_are_visible(self):
         """Every arrow needs a visible shaft before its marker begins."""
-        _, edges = self._greedy_svg_geometry()
+        _, edges = self._greedy_random_svg_geometry()
         for edge_id, edge in edges.items():
             points = parse_orthogonal_path(edge.attrib["d"])
             (x1, y1), (x2, y2) = points[-2:]
@@ -838,15 +858,27 @@ class InfraNotePilotTests(unittest.TestCase):
                 f"{edge_id} has no visible shaft before its arrow",
             )
 
-    def test_sampling_note_embeds_the_greedy_flow(self):
-        """The note must connect its explanation to the published flowchart."""
+    def test_sampling_note_covers_greedy_random_and_multi_sequence_generation(self):
+        """The canonical note must expose both token and multi-sequence flows."""
         markdown = self.VLLM_SAMPLING_NOTE_PATH.read_text(encoding="utf-8")
         self.assertTrue(markdown.startswith("# vLLM Sampling\n"))
-        self.assertIn("## Sampling 解决的问题", markdown)
+        second_level_headings = re.findall(
+            r"^## (.+)$", markdown, flags=re.MULTILINE
+        )
+        self.assertEqual(second_level_headings, ["Greedy 与 Random", "多序列生成"])
         self.assertIn(
-            "![vLLM Greedy Sampling 流程](../../assets/infra/vllm/greedy-sampling-flow.svg?v=20260811-1)",
+            "![vLLM Greedy 与 Random Sampling 流程](../../assets/infra/vllm/greedy-random-sampling-flow.svg?v=20260811-2)",
             markdown,
         )
+        for section in (
+            "### 参数归一化与类型判定",
+            "### Batch 聚合与执行路径",
+            "### Logits 处理顺序",
+            "### Random 候选过滤",
+            "### Parallel Sampling",
+            "### Beam Search",
+        ):
+            self.assertIn(section, markdown)
         for identifier in (
             "`temperature`",
             "`_MAX_TEMP`",
@@ -855,9 +887,12 @@ class InfraNotePilotTests(unittest.TestCase):
             "`all_greedy`",
             "`all_random`",
             "`torch.where`",
+            "`ParentRequest`",
+            "`BeamSearchInstance`",
         ):
             self.assertIn(identifier, markdown)
 
+        self.assertIn("不会影响 Greedy 的最终结果", markdown)
         self.assertIn("原始输入 `temperature = 0`", markdown)
         self.assertIn("原始输入 `1e-6` 不会进入 Greedy", markdown)
         normalization_start = markdown.index("0 < self.temperature < _MAX_TEMP")
@@ -865,6 +900,11 @@ class InfraNotePilotTests(unittest.TestCase):
             normalization_start,
             markdown.index("if self.temperature < _SAMPLING_EPS", normalization_start),
         )
+        self.assertNotIn("## 关键结论", markdown)
+        self.assertNotIn("## 参考资料", markdown)
+        self.assertNotIn("## 两种策略对比", markdown)
+        self.assertNotIn("Speculative Decoding", markdown)
+        self.assertFalse(self.VLLM_REMOVED_SCHEDULER_NOTE_PATH.exists())
 
 
 if __name__ == "__main__":
