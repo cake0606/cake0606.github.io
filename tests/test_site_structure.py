@@ -54,6 +54,7 @@ class HomepageParser(HTMLParser):
         self.plan_entries = []
         self.top_level_summaries = []
         self.second_level_summaries = []
+        self.local_assets = []
         self._details_levels = []
         self._summary_level = None
         self._summary_text = []
@@ -78,6 +79,14 @@ class HomepageParser(HTMLParser):
 
         if tag == "a" and "note-file-link" in classes:
             self.note_links.append(attributes.get("href"))
+
+        if tag == "link" and attributes.get("rel") == "stylesheet":
+            href = attributes.get("href", "")
+            if not href.startswith(("http://", "https://")):
+                self.local_assets.append(href)
+
+        if tag == "script" and attributes.get("src"):
+            self.local_assets.append(attributes["src"])
 
         if {"project-item", "project-card"} & classes:
             self.project_entries.append(tag)
@@ -114,12 +123,19 @@ class ViewerDocumentParser(HTMLParser):
     def __init__(self):
         super().__init__()
         self.script_sources = []
+        self.local_assets = []
         self.note_path = None
 
     def handle_starttag(self, tag, attrs):
         attributes = dict(attrs)
         if tag == "script" and attributes.get("src"):
-            self.script_sources.append(attributes["src"])
+            self.script_sources.append(urlparse(attributes["src"]).path)
+            if not attributes["src"].startswith(("http://", "https://")):
+                self.local_assets.append(attributes["src"])
+        if tag == "link" and attributes.get("rel") == "stylesheet":
+            href = attributes.get("href", "")
+            if not href.startswith(("http://", "https://")):
+                self.local_assets.append(href)
         if tag == "body":
             self.note_path = attributes.get("data-note-path")
 
@@ -196,6 +212,13 @@ class HomepageTests(unittest.TestCase):
             with self.subTest(color=color):
                 self.assertIn(color, self.styles)
 
+    def test_local_assets_are_versioned_to_prevent_stale_ui(self):
+        """A cached pre-redesign stylesheet must not be mixed with the new HTML."""
+        self.assertTrue(self.parser.local_assets)
+        for asset in self.parser.local_assets:
+            with self.subTest(asset=asset):
+                self.assertTrue(urlparse(asset).query, asset)
+
 
 class ViewerIntegrationTests(unittest.TestCase):
     @staticmethod
@@ -233,6 +256,25 @@ class ViewerIntegrationTests(unittest.TestCase):
                 )
                 self.assertEqual(parser.note_path, expected_note_path)
                 self.assertTrue((DOCS_DIR / parser.note_path).is_file())
+
+    def test_viewer_assets_are_versioned_to_prevent_stale_navigation(self):
+        """Viewer HTML, scripts, and styles must update as one deployable unit."""
+        for page in ("note.html", "llm/ppo.html", "llm/grpo.html", "llm/concepts.html"):
+            with self.subTest(page=page):
+                parser = self.parse_document(page)
+                self.assertTrue(parser.local_assets)
+                for asset in parser.local_assets:
+                    self.assertTrue(urlparse(asset).query, asset)
+
+    def test_viewers_do_not_load_commonjs_highlight_language_modules(self):
+        """Node-oriented Highlight.js modules throw `module is not defined` in browsers."""
+        for page in ("note.html", "llm/ppo.html", "llm/grpo.html", "llm/concepts.html"):
+            with self.subTest(page=page):
+                parser = self.parse_document(page)
+                self.assertFalse(
+                    any("/lib/languages/" in source for source in parser.script_sources),
+                    parser.script_sources,
+                )
 
 
 if __name__ == "__main__":
