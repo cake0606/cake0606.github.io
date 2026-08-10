@@ -19,7 +19,7 @@ tags: []
 -  执行写入操作。给定 slot_mapping 和刚算出来的 K/V，在 GPU 上并行地把每个 token 的 K/V 写到 kv_cache tensor 的对应位置
 
 ## 全局kv_cache tensor
-```
+```text
 kv_cache shape: (2, 28, 3053, 256, 8, 128)
                  │   │    │     │    │   │
                  │   │    │     │    │   └── head_dim

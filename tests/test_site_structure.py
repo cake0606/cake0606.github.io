@@ -1,5 +1,6 @@
 from html.parser import HTMLParser
 from pathlib import Path
+import re
 import unittest
 from urllib.parse import parse_qs, urlparse
 
@@ -42,6 +43,8 @@ MOVED_LLM_MARKDOWN = (
     "index.md",
     "kvcache.md",
 )
+
+CODE_FENCE_PATTERN = re.compile(r"^\s*(?:>\s*)?(```|~~~)([^\s`]*)\s*$")
 
 
 class HomepageParser(HTMLParser):
@@ -167,6 +170,51 @@ class NoteTopologyTests(unittest.TestCase):
         for filename in MOVED_LLM_MARKDOWN:
             with self.subTest(filename=filename):
                 self.assertFalse((DOCS_DIR / "llm" / filename).exists())
+
+
+class MarkdownCodeFenceTests(unittest.TestCase):
+    @staticmethod
+    def markdown_files():
+        for root in (DOCS_DIR / "infra", DOCS_DIR / "llm"):
+            yield from root.rglob("*.md")
+
+    def test_every_opening_fence_has_a_descriptive_language(self):
+        """Unlabeled or abbreviated fences cannot produce reliable UI labels."""
+        unlabeled_fences = []
+        short_alias_fences = []
+        unclosed_fences = []
+
+        for path in self.markdown_files():
+            open_marker = None
+            open_line = None
+            for line_number, line in enumerate(
+                path.read_text(encoding="utf-8").splitlines(),
+                start=1,
+            ):
+                match = CODE_FENCE_PATTERN.match(line)
+                if not match:
+                    continue
+
+                marker, language = match.groups()
+                if open_marker is None:
+                    open_marker = marker
+                    open_line = line_number
+                    if not language:
+                        unlabeled_fences.append((path.relative_to(DOCS_DIR), line_number))
+                    elif language.lower() in {"py", "cu"}:
+                        short_alias_fences.append(
+                            (path.relative_to(DOCS_DIR), line_number, language.lower())
+                        )
+                elif marker == open_marker and not language:
+                    open_marker = None
+                    open_line = None
+
+            if open_marker is not None:
+                unclosed_fences.append((path.relative_to(DOCS_DIR), open_line))
+
+        self.assertEqual(unlabeled_fences, [])
+        self.assertEqual(short_alias_fences, [])
+        self.assertEqual(unclosed_fences, [])
 
 
 class HomepageTests(unittest.TestCase):

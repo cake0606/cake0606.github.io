@@ -7,7 +7,7 @@ _SAMPLING_EPS = 1e-5
 _MAX_TEMP = 1e-2
 
 通过温度区间划分GREEDY和RANDOM：
-```py
+```python
     @cached_property
     def sampling_type(self) -> SamplingType:
         if self.temperature < _SAMPLING_EPS:
@@ -22,7 +22,7 @@ _MAX_TEMP = 1e-2
 使用1e-5而不是==0来判断GREEDY， 是为了浮点安全， 如果用户传1e-6这种极小值， 在softmax中无意义， 直接判定为greedy
 
 使用SamplingType来枚举
-```py
+```python
 class SamplingType(IntEnum):
     GREEDY = 0
     RANDOM = 1
@@ -31,7 +31,7 @@ class SamplingType(IntEnum):
 GREEDYF放在第一位， 处于最优先判定。
 
 3. 在判定为GREEDY时， 对参数进行强制规整
-```py
+```python
         if self.temperature < _SAMPLING_EPS:
             # Zero temperature means greedy sampling.
             self.top_p = 1.0
@@ -49,7 +49,7 @@ GREEDYF放在第一位， 处于最优先判定。
 ## Batch聚合
 在一个batch中同时混合了greed和random请求时， 在不拆batch的前提下， 使greedy走最省算力的路径。
 1. 在add_request中注册：
-```py
+```python
         if sampling_params := request.sampling_params:
             if sampling_params.sampling_type == SamplingType.GREEDY:
                 # Should avoid division by zero later when apply_temperature.
@@ -63,7 +63,7 @@ GREEDYF放在第一位， 处于最优先判定。
 在GREEDY分支中显式将temperature_cpu[req_index] = 0， 是为了下游使用torch.where时有确定的0 。
 
 2. 节省一次temperature张量拷贝
-```py
+```python
     def _make_sampling_metadata(self) -> SamplingMetadata:
         num_reqs = self.num_reqs
         if not self.all_greedy:
@@ -75,7 +75,7 @@ GREEDYF放在第一位， 处于最优先判定。
 ```
 在all greedy的时候， 直接将temperature设置为None， 不传这个张量。
 在sample/sampler.py中
-```py
+```python
   if sampling_metadata.all_random:
             greedy_sampled = None
         else:
@@ -99,10 +99,10 @@ GREEDYF放在第一位， 处于最优先判定。
 
 3. 混合batch的处理
 首先对logits进行argmax：
-```py
+```python
  greedy_sampled = self.greedy_sample(logits)
 ```
-```py
+```python
     @staticmethod
     def apply_temperature(
         logits: torch.Tensor,
@@ -118,7 +118,7 @@ GREEDYF放在第一位， 处于最优先判定。
 apply_temperature会先对温度小于_SAMPLING_EPS的temp设置为1.0， 防止出现div 0， 然后对整个logits进行div temp的操作。
 
 通过processor对logits进行处理：
-```py
+```python
         # Apply logits processors that only apply to random sampling
         # (argmax invariant)
         for processor in sampling_metadata.logitsprocs.argmax_invariant:
@@ -133,11 +133,11 @@ argmax_invariant指在processor应用之后， 分数最大的token不变。
 对于greedy来说， min_p对它无效。对random来说， 保留概率>= max_prob * min_p的token。
 
 对logits进行topk-topp处理：
-```py
+```python
  logits_sort, logits_idx = logits.sort(dim=-1, descending=False)
 ```
 首先按照logits分数进行升序排序， 用logits_idx维护分数与token_id的对应关系。
-```py
+```python
  if k is not None:
         # Apply top-k.
         top_k_mask = logits_sort.size(1) - k.to(torch.long)  # shape: B
@@ -150,7 +150,7 @@ top k保留前k大：
     1. 计算第k名的索引
     2. gather出第k名的值作为阈值
     3. 比阈值小的设置为-inf
-```py
+```python
  if p is not None:
         # Apply top-p.
         probs_sort = logits_sort.softmax(dim=-1)
@@ -166,13 +166,13 @@ top p按累积概率保留：
    3. 累积值<= 1-p 的屏蔽
    4. 末尾一定保留
 
-```py
+```python
     # Re-sort the probabilities.
     return logits.scatter_(dim=-1, index=logits_idx, src=logits_sort)
 ```
 把logits_sort的值写回logits。
 
-```py
+```python
         sampled = torch.where(
             sampling_metadata.temperature < _SAMPLING_EPS,
             greedy_sampled,

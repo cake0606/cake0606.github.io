@@ -17,7 +17,7 @@ global memory 是 CUDA kernel 最常见的数据来源和写回位置。对 elem
 
 warp 内 32 个线程访问连续地址时，硬件可以将多个线程的访问合并成较少的 memory transaction。连续、对齐、同类型访问通常更容易合并。
 
-```cu
+```cuda
 int idx = blockIdx.x * blockDim.x + threadIdx.x;
 if (idx < N) {
     y[idx] = x[idx];
@@ -28,7 +28,7 @@ if (idx < N) {
 
 stride 访问会降低合并效率：
 
-```cu
+```cuda
 int idx = blockIdx.x * blockDim.x + threadIdx.x;
 int offset = idx * stride;
 if (offset < N) {
@@ -42,7 +42,7 @@ if (offset < N) {
 
 vectorized load/store 使用更宽的数据类型一次搬运多个标量元素。
 
-```cu
+```cuda
 #define FLOAT4(value) (reinterpret_cast<float4 *>(&(value))[0])
 #define HALF2(value) (reinterpret_cast<half2 *>(&(value))[0])
 #define LDST128BITS(value) (reinterpret_cast<float4 *>(&(value))[0])
@@ -68,7 +68,7 @@ vectorized load/store 使用更宽的数据类型一次搬运多个标量元素�
 
 shared memory 通过 `__shared__` 声明，作用域是一个 thread block。
 
-```cu
+```cuda
 __global__ void kernel(float* x, float* y) {
     __shared__ float tile[256];
 
@@ -108,7 +108,7 @@ shared memory 按 bank 组织。同一个 warp 内多个线程访问同一个 ba
 
 `cudaMallocManaged` 分配 unified memory。CPU 和 GPU 使用同一个指针访问同一段逻辑内存。
 
-```cu
+```cuda
 float* x = nullptr;
 cudaMallocManaged(&x, N * sizeof(float));
 
@@ -122,7 +122,7 @@ cudaFree(x);
 
 unified memory 由运行时负责迁移。访问发生在不同处理器之间切换时，可能触发 page migration。可使用 `cudaMemPrefetchAsync` 提前迁移：
 
-```cu
+```cuda
 cudaMemPrefetchAsync(x, N * sizeof(float), device_id, stream);
 ```
 
@@ -130,7 +130,7 @@ cudaMemPrefetchAsync(x, N * sizeof(float), device_id, stream);
 
 二维数组可使用 `cudaMallocPitch` 获取按行对齐的 device memory。
 
-```cu
+```cuda
 float* d_ptr = nullptr;
 size_t pitch = 0;
 cudaMallocPitch(&d_ptr, &pitch, width * sizeof(float), height);
@@ -138,7 +138,7 @@ cudaMallocPitch(&d_ptr, &pitch, width * sizeof(float), height);
 
 访问第 `row` 行时使用 byte pitch：
 
-```cu
+```cuda
 char* base = reinterpret_cast<char*>(d_ptr);
 float* row_ptr = reinterpret_cast<float*>(base + row * pitch);
 float value = row_ptr[col];

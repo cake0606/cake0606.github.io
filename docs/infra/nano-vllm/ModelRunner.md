@@ -26,7 +26,7 @@ def warmup_model(self):
     torch的CUDA allocator会记录历史分配peak。
 
 ## allocate_kv_cache
-```
+```text
 available_bytes = total * gpu_memory_utilization - used - peak + current
 num_kv_cache_blocks = available_bytes // block_bytes
 ```

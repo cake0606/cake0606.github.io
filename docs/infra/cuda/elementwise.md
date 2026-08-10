@@ -11,7 +11,7 @@
 
 常用类型转换宏：
 
-```cu
+```cuda
 #define FLOAT4(value) (reinterpret_cast<float4 *>(&(value))[0])
 #define HALF2(value) (reinterpret_cast<half2 *>(&(value))[0])
 #define LDST128BITS(value) (reinterpret_cast<float4 *>(&(value))[0])
@@ -24,7 +24,7 @@
 
 每个线程处理一个 `float` 元素。
 
-```cu
+```cuda
 __global__ void elementwise_add_f32_kernel(
     const float* a,
     const float* b,
@@ -39,7 +39,7 @@ __global__ void elementwise_add_f32_kernel(
 
 PyTorch C++ extension 侧启动 kernel：
 
-```cu
+```cuda
 void elementwise_add_f32(torch::Tensor a, torch::Tensor b, torch::Tensor c) {
     int N = a.numel();
 
@@ -60,7 +60,7 @@ void elementwise_add_f32(torch::Tensor a, torch::Tensor b, torch::Tensor c) {
 
 每个线程处理 4 个连续 `float` 元素。
 
-```cu
+```cuda
 __global__ void elementwise_add_f32x4_kernel(
     float* a,
     float* b,
@@ -89,7 +89,7 @@ __global__ void elementwise_add_f32x4_kernel(
 
 启动配置按 4 个元素为一组计算：
 
-```cu
+```cuda
 int pack_size = 4;
 int packs = (N + pack_size - 1) / pack_size;
 
@@ -103,7 +103,7 @@ dim3 grid((packs + block.x - 1) / block.x);
 
 每个线程处理一个 `half` 元素。
 
-```cu
+```cuda
 #include <cuda_fp16.h>
 
 __global__ void elementwise_add_f16_kernel(
@@ -122,7 +122,7 @@ __global__ void elementwise_add_f16_kernel(
 
 `half2` 包含两个 `half`，`__hadd2` 对两个 lane 分别执行 half 加法。
 
-```cu
+```cuda
 __global__ void elementwise_add_f16x2_kernel(
     half* a,
     half* b,
@@ -144,7 +144,7 @@ __global__ void elementwise_add_f16x2_kernel(
 
 启动配置按 2 个元素为一组计算：
 
-```cu
+```cuda
 int pack_size = 2;
 int packs = (N + pack_size - 1) / pack_size;
 
@@ -156,7 +156,7 @@ dim3 grid((packs + block.x - 1) / block.x);
 
 每个线程处理 8 个 `half` 元素。计算使用 4 个 `half2`。
 
-```cu
+```cuda
 __global__ void elementwise_add_f16x8_kernel(
     half* a,
     half* b,
@@ -193,7 +193,7 @@ __global__ void elementwise_add_f16x8_kernel(
 
 pack 版本使用 128-bit load/store 搬运 8 个 `half`。
 
-```cu
+```cuda
 __global__ void elementwise_add_f16x8_pack_kernel(
     half* a,
     half* b,
@@ -235,7 +235,7 @@ y = max(x, 0)
 
 FP16x8 pack 版本：
 
-```cu
+```cuda
 __global__ void relu_f16x8_pack_kernel(const half* x, half* y, int N) {
     int idx = 8 * (blockIdx.x * blockDim.x + threadIdx.x);
 
