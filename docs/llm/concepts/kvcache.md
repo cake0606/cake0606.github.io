@@ -1,10 +1,10 @@
 # KV Cache
 
-KV Cache 可以理解为大模型在自回归推理阶段保存的“历史注意力记忆”。如果不做 cache，那么每生成一个新 token，都要把整段历史重新过一遍模型；做了 cache 之后，历史 token 在各层的 \(K/V\) 可以直接复用，新 step 只需要为当前 token 计算新的 \(q/k/v\)，再把新的 \(K/V\) 追加进去。
+KV Cache 可以理解为大模型在自回归推理阶段保存的“历史注意力记忆”。如果不使用缓存，那么每生成一个新 token，都要把整段历史重新过一遍模型；使用缓存后，历史 token 在各层的 \(K/V\) 可以直接复用，每个解码步只需要为当前 token 计算新的 \(q/k/v\)，再把新的 \(K/V\) 追加进去。
 
-`prompt -> prefill -> 写入各层 KV cache -> 取最后位置 logits -> 采样 next token -> decode -> 复用旧 KV 并追加新 KV`
+`prompt -> prefill -> 写入各层 KV Cache -> 取最后位置 logits -> 采样 next token -> decode -> 复用旧 KV 并追加新 KV`
 
-## 1. KV Cache 在解决什么问题
+## KV Cache 解决的问题
 
 自回归生成的目标是：
 
@@ -12,15 +12,15 @@ KV Cache 可以理解为大模型在自回归推理阶段保存的“历史注�
 P(x_{T+1} \mid x_1, x_2, \dots, x_T)
 \]
 
-也就是给定当前上下文，预测下一个 token。问题在于，Transformer 的每一层 attention 都需要读取当前 token 之前的历史信息。如果不做缓存，那么每生成一个新 token，都要把历史 token 在每一层重新计算一次。
+也就是给定当前上下文，预测下一个 token。问题在于，Transformer 的每一层注意力都需要读取当前 token 之前的历史信息。如果不做缓存，那么每生成一个新 token，都要把历史 token 在每一层重新计算一次。
 
-以长度为 \(T\) 的上下文为例，不做 cache 时：
+以长度为 \(T\) 的上下文为例，不使用缓存时：
 
 1. 为了得到 \(x_{T+1}\)，要重新计算 \(x_1,\dots,x_T\) 的整段前向。
 2. 为了得到 \(x_{T+2}\)，又要重新计算 \(x_1,\dots,x_T,x_{T+1}\) 的整段前向。
 3. 后续每一步都继续重复这件事。
 
-真正重复计算的核心不是“历史 token 的最终 logits”，而是它们在每一层已经算过的注意力中间量。对后续 token 来说，历史 token 最有价值的中间结果就是各层的 \(K/V\)，因为新 token 做 attention 时会持续读取这些历史 \(K/V\)。
+真正重复计算的核心不是“历史 token 的最终 `logits`”，而是它们在每一层已经算过的注意力中间量。对后续 token 来说，历史 token 最有价值的中间结果就是各层的 \(K/V\)，因为新 token 做注意力计算时会持续读取这些历史 \(K/V\)。
 
 因此 KV Cache 的核心作用就是：
 
@@ -32,11 +32,11 @@ P(x_{T+1} \mid x_1, x_2, \dots, x_T)
 
 这样一来，历史 token 不需要在每步生成时反复重算，推理效率会明显提高。
 
-## 2. 核心量与关键公式
+## 核心量与关键公式
 
-### 2.1 单层 attention 在计算什么
+### 单层注意力在计算什么
 
-先只看第 \(l\) 层、第 \(i\) 个位置。对单个 attention head 而言：
+先只看第 \(l\) 层、第 \(i\) 个位置。对单个注意力头而言：
 
 \[
 q_i^{(l)} \in \mathbb{R}^{d_h}, \qquad
@@ -44,9 +44,9 @@ k_j^{(l)} \in \mathbb{R}^{d_h}, \qquad
 v_j^{(l)} \in \mathbb{R}^{d_h}
 \]
 
-其中 \(d_h\) 是单个 head 的维度。
+其中 \(d_h\) 是单个注意力头的维度。
 
-第 \(i\) 个位置的 attention 输出可以写成：
+第 \(i\) 个位置的注意力输出可以写成：
 
 \[
 o_i^{(l)} = \sum_{j \le i} \alpha_{ij}^{(l)} v_j^{(l)},
@@ -76,15 +76,15 @@ o_i^{(l)} \in \mathbb{R}^{d_h}
 \{v_1^{(l)}, \dots, v_i^{(l)}\}
 \]
 
-第三，同层前面位置的 \(q_j^{(l)}\) 不直接进入当前位置的 attention 公式。后面 token 真正需要反复读取的是历史位置的 \(K/V\)，这正是 KV Cache 缓存对象的来源。
+第三，同层前面位置的 \(q_j^{(l)}\) 不直接进入当前位置的注意力公式。后面 token 真正需要反复读取的是历史位置的 \(K/V\)，这正是 KV Cache 缓存对象的来源。
 
-如果把一个 head 扩展到整段序列，常见张量形状可以写成：
+如果把一个注意力头扩展到整段序列，常见张量形状可以写成：
 
 \[
 Q^{(l)}, K^{(l)}, V^{(l)} \in \mathbb{R}^{T \times d_h}
 \]
 
-如果带 batch 和多头，一个常见实现形状是：
+如果带批次和多头，一个常见实现形状是：
 
 \[
 Q, K, V \in \mathbb{R}^{B \times H \times T \times d_h}
@@ -92,19 +92,19 @@ Q, K, V \in \mathbb{R}^{B \times H \times T \times d_h}
 
 其中：
 
-- \(B\)：batch size
-- \(H\)：attention 头数
+- \(B\)：批次大小
+- \(H\)：注意力头数
 - \(T\)：序列长度
 
-### 2.2 一层里的 hidden state 是怎么更新的
+### 一层里的隐藏状态如何更新
 
-设第 \(l-1\) 层的输入 hidden states 为：
+设第 \(l-1\) 层的输入隐藏状态为：
 
 \[
 H^{(l-1)} \in \mathbb{R}^{T \times d_{\text{model}}}
 \]
 
-在 decoder-only Transformer 里，一层通常由 attention 和 MLP 两部分组成。用 pre-norm 形式写，简化后的单层更新可以写成：
+在 decoder-only Transformer 里，一层通常由注意力和 MLP 两部分组成。用 pre-norm 形式写，简化后的单层更新可以写成：
 
 \[
 U^{(l)} = H^{(l-1)} + \operatorname{Attention}(\operatorname{Norm}(H^{(l-1)})),
@@ -120,7 +120,7 @@ H^{(l)} \in \mathbb{R}^{T \times d_{\text{model}}}
 
 这里需要区分两个量。
 
-attention 子层输出是：
+注意力子层输出是：
 
 \[
 O^{(l)} = \operatorname{Attention}(\operatorname{Norm}(H^{(l-1)})),
@@ -128,17 +128,17 @@ O^{(l)} = \operatorname{Attention}(\operatorname{Norm}(H^{(l-1)})),
 O^{(l)} \in \mathbb{R}^{T \times d_{\text{model}}}
 \]
 
-而真正这一层结束后的 hidden state 是：
+而这一层结束后的隐藏状态是：
 
 \[
 H^{(l)}
 \]
 
-也就是说，hidden state 不是单纯的“softmax 注意力分数乘 value”，而是 attention、残差、归一化、MLP 共同作用之后的结果。最后一层最后一个位置的 hidden state 再经过输出投影，才会变成 next-token logits。
+也就是说，隐藏状态不是单纯的“softmax 注意力分数乘 \(V\)”，而是注意力、残差、归一化和 MLP 共同作用之后的结果。最后一层最后一个位置的隐藏状态再经过输出投影，才会变成下一个 token 的 `logits`。
 
-### 2.3 为什么只缓存 K/V，不缓存 Q
+### 为什么只缓存 K/V，不缓存 Q
 
-对新生成 token 来说，在第 \(l\) 层真正需要的 attention 计算是：
+对新生成 token 来说，在第 \(l\) 层真正需要的注意力计算是：
 
 \[
 o_{T+1}^{(l)}
@@ -159,9 +159,9 @@ V_{\le T+1}^{(l)}
 - \(V_{\le T+1}^{(l)} \in \mathbb{R}^{(T+1) \times d_h}\)
 - 输出 \(o_{T+1}^{(l)} \in \mathbb{R}^{1 \times d_h}\)
 
-当前 step 只需要当前 token 自己的 \(q_{T+1}^{(l)}\)，而历史部分真正需要被持续读取的是 \(K_{\le T}^{(l)}\) 和 \(V_{\le T}^{(l)}\)。
+当前解码步只需要当前 token 自己的 \(q_{T+1}^{(l)}\)，而历史部分真正需要被持续读取的是 \(K_{\le T}^{(l)}\) 和 \(V_{\le T}^{(l)}\)。
 
-历史 token 的 \(q\) 在后续 step 里不会再被拿出来参与新的 attention。它只在该 token 当时被计算 hidden state 的那一刻有用，之后就不再是后续 token 必需的中间量。
+历史 token 的 \(q\) 在后续解码步里不会再参与新的注意力计算。它只在该 token 当时被计算隐藏状态的那一刻有用，之后就不再是后续 token 必需的中间量。
 
 所以从复用价值看：
 
@@ -173,15 +173,15 @@ V_{\le T+1}^{(l)}
 
 因此推理缓存只需要保存 \(K/V\)，而不需要保存历史 \(Q\)。
 
-### 2.4 KV Cache 的显存占用
+### KV Cache 的显存占用
 
 KV Cache 的显存主要由以下几个因素决定：
 
-- batch size
+- 批次大小
 - 当前缓存的 token 数
 - 层数
 - KV 头数
-- 每个 head 的维度
+- 每个注意力头的维度
 - 数据类型字节数
 
 常见估算公式是：
@@ -194,13 +194,13 @@ B \times T \times L \times H_{kv} \times D \times 2 \times s
 
 其中：
 
-- \(B\)：batch size
-- \(T\)：当前 cache 中已保存的 token 数
+- \(B\)：批次大小
+- \(T\)：当前缓存中已保存的 token 数
 - \(L\)：Transformer 层数
 - \(H_{kv}\)：KV 头数
-- \(D\)：每个 KV head 的维度
+- \(D\)：每个 KV 头的维度
 - \(2\)：分别对应 \(K\) 和 \(V\)
-- \(s\)：每个元素占用的字节数，FP16/BF16 通常为 2
+- \(s\)：每个元素占用的字节数，`FP16`/`BF16` 通常为 2
 
 这个公式对应的单层单样本 KV 张量形状，可以理解为：
 
@@ -208,7 +208,7 @@ B \times T \times L \times H_{kv} \times D \times 2 \times s
 K^{(l)}, V^{(l)} \in \mathbb{R}^{H_{kv} \times T \times D}
 \]
 
-如果把 batch 和层数都算进去，就是：
+如果把批次和层数都算进去，就是：
 
 \[
 \text{all KV} \sim [L, B, 2, H_{kv}, T, D]
@@ -220,7 +220,7 @@ K^{(l)}, V^{(l)} \in \mathbb{R}^{H_{kv} \times T \times D}
 
 第一，KV Cache 对上下文长度 \(T\) 是线性增长的。
 
-第二，KV Cache 对 batch size \(B\) 也是线性增长的。
+第二，KV Cache 对批次大小 \(B\) 也是线性增长的。
 
 第三，是否采用 MHA、GQA、MQA，会直接影响 \(H_{kv}\)，从而显著影响显存。
 
@@ -238,7 +238,7 @@ H_{kv} < H_q
 
 这也是很多大模型在长上下文推理时使用 GQA/MQA 的重要原因之一。
 
-### 2.5 显存计算示例
+### 显存计算示例
 
 假设一个 LLaMA 风格模型配置如下：
 
@@ -247,7 +247,7 @@ H_{kv} < H_q
 - \(L = 32\)
 - \(H_{kv} = 8\)
 - \(D = 128\)
-- \(s = 2\)（FP16）
+- \(s = 2\)（`FP16`）
 
 则 KV Cache 大小为：
 
@@ -262,7 +262,7 @@ H_{kv} < H_q
 512 \text{ MB}
 \]
 
-这意味着在这个配置下，单 batch、4096 上下文长度时，光 KV Cache 就大约需要 512 MB 显存。
+这意味着在这个配置下，单批次、4096 上下文长度时，光 KV Cache 就大约需要 512 MB 显存。
 
 如果其他条件不变，但改成普通 MHA，令：
 
@@ -278,15 +278,15 @@ H_{kv} = 32
 
 这说明长上下文场景下，KV Cache 很容易成为主要显存瓶颈，而不只是“参数之外的一点小开销”。
 
-## 3. 一条完整的 KV Cache 执行链
+## 一条完整的 KV Cache 执行链
 
 把 KV Cache 放回完整推理流程，可以得到这样一条执行链：
 
-1. 输入 prompt：\(x_1,\dots,x_T\)。
-2. 进入 `prefill`，一次性处理整段 prompt。
+1. 输入提示：\(x_1,\dots,x_T\)。
+2. 进入 `prefill`，一次性处理整段提示。
 3. 在每一层计算整段历史 token 的 \(K/V\)。
-4. 将各层历史 \(K/V\) 写入 cache。
-5. 取最后一个位置的 logits：
+4. 将各层历史 \(K/V\) 写入缓存。
+5. 取最后一个位置的 `logits`：
 
 \[
 z_T = W_{\text{vocab}} h_T^{(L)},
@@ -297,23 +297,23 @@ z_T \in \mathbb{R}^{|\mathcal V|}
 6. 根据 \(z_T\) 采样或贪心选择下一个 token \(x_{T+1}\)。
 7. 进入 `decode`。
 8. 每步只为新 token 计算新的 \(q/k/v\)。
-9. 用新 token 的 \(q\) 读取历史 cache 中的 \(K/V\)。
-10. 把新 token 的 \(K/V\) 追加到 cache。
+9. 用新 token 的 \(q\) 读取历史缓存中的 \(K/V\)。
+10. 把新 token 的 \(K/V\) 追加到缓存。
 11. 重复上述过程，直到生成到 `eos` 或达到长度上限。
 
 这条链里最关键的点只有一个：`prefill` 负责建立缓存，`decode` 负责复用并扩展缓存。
 
-## 4. Prefill 和 Decode 的区别
+## Prefill 和 Decode 的区别
 
-### 4.1 Prefill 在做什么
+### Prefill 在做什么
 
-设 prompt 长度为 \(T\)，在 `prefill` 中，每层输入是：
+设提示长度为 \(T\)，在 `prefill` 中，每层输入是：
 
 \[
 H^{(l-1)} \in \mathbb{R}^{T \times d_{\text{model}}}
 \]
 
-如果带 batch 和多头，一个常见实现可以把投影后的张量理解为：
+如果带批次和多头，一个常见实现可以把投影后的张量理解为：
 
 \[
 Q^{(l)} \in \mathbb{R}^{B \times H_q \times T \times d_h}
@@ -323,7 +323,7 @@ Q^{(l)} \in \mathbb{R}^{B \times H_q \times T \times d_h}
 K^{(l)}, V^{(l)} \in \mathbb{R}^{B \times H_{kv} \times T \times d_h}
 \]
 
-这一层会一次性计算整段输入的 \(Q^{(l)}, K^{(l)}, V^{(l)}\)，并做整段 causal attention。此时模型不只是为了最后一个位置的 logits 在前向，它还顺手建立了每一层、每一个历史 token 的 KV cache。
+这一层会一次性计算整段输入的 \(Q^{(l)}, K^{(l)}, V^{(l)}\)，并做整段因果注意力。此时模型不只是为了最后一个位置的 `logits` 在前向，它还会建立每一层、每一个历史 token 的 KV Cache。
 
 因此 `prefill` 的本质是：
 
@@ -333,9 +333,9 @@ K^{(l)}, V^{(l)} \in \mathbb{R}^{B \times H_{kv} \times T \times d_h}
 }
 \]
 
-### 4.2 Decode 在做什么
+### Decode 在做什么
 
-当 cache 中已经有长度为 \(T\) 的历史后，下一步生成只需要处理一个新 token。设新 token 为 \(x_{T+1}\)，则第 \(l\) 层只需要新算：
+当缓存中已经有长度为 \(T\) 的历史后，下一步生成只需要处理一个新 token。设新 token 为 \(x_{T+1}\)，则第 \(l\) 层只需要新算：
 
 \[
 q_{T+1}^{(l)} \in \mathbb{R}^{B \times H_q \times 1 \times d_h}
@@ -345,13 +345,13 @@ q_{T+1}^{(l)} \in \mathbb{R}^{B \times H_q \times 1 \times d_h}
 k_{T+1}^{(l)}, v_{T+1}^{(l)} \in \mathbb{R}^{B \times H_{kv} \times 1 \times d_h}
 \]
 
-历史 cache 的形状则是：
+历史缓存的形状则是：
 
 \[
 K_{\le T}^{(l)}, V_{\le T}^{(l)} \in \mathbb{R}^{B \times H_{kv} \times T \times d_h}
 \]
 
-然后把新的 \(k/v\) 追加到历史 cache 后面，再用当前 token 的 \(q\) 去读整段历史 \(K/V\)。
+然后把新的 \(k/v\) 追加到历史缓存后面，再用当前 token 的 \(q\) 去读整段历史 \(K/V\)。
 
 因此 `decode` 的本质是：
 
@@ -361,41 +361,41 @@ K_{\le T}^{(l)}, V_{\le T}^{(l)} \in \mathbb{R}^{B \times H_{kv} \times T \times
 }
 \]
 
-### 4.3 两者在计算复杂度上的区别
+### 两者在计算复杂度上的区别
 
-`prefill` 处理的是整段长度为 \(T\) 的序列，attention 更接近在计算一个 \(T \times T\) 的关系，因此复杂度更接近：
+`prefill` 处理的是整段长度为 \(T\) 的序列，注意力更接近在计算一个 \(T \times T\) 的关系，因此复杂度更接近：
 
 \[
 O(T^2)
 \]
 
-`decode` 每一步只处理一个新 token，只需要这个 token 对长度为 \(T\) 的历史做 attention，因此单步复杂度更接近：
+`decode` 每一步只处理一个新 token，只需要这个 token 对长度为 \(T\) 的历史做注意力计算，因此单步复杂度更接近：
 
 \[
 O(T)
 \]
 
-这也是为什么长 prompt 输入时，`prefill` 会比较贵；而长生成过程中，`decode` 会随着历史越来越长而逐步变慢。
+这也是为什么输入提示很长时，`prefill` 会比较贵；而在长生成过程中，`decode` 会随着历史越来越长而逐步变慢。
 
-### 4.4 两者在显存行为上的区别
+### 两者在显存行为上的区别
 
-`prefill` 更像是在“写 cache”：
+`prefill` 更像是在“写缓存”：
 
 - 一次性生成所有历史 token 的 \(K/V\)
-- 把这些 \(K/V\) 放入 cache
+- 把这些 \(K/V\) 放入缓存
 
-`decode` 更像是在“读 cache + 追加 cache”：
+`decode` 更像是在“读缓存并追加缓存”：
 
 - 每步读取已有历史 KV
 - 每步只新增一个 token 的 \(K/V\)
 
-因此 KV cache 的显存不会在 `prefill` 后停止增长，而是会随着生成长度继续线性增长：
+因此 KV Cache 的显存不会在 `prefill` 后停止增长，而是会随着生成长度继续线性增长：
 
 \[
 T \uparrow \quad \Rightarrow \quad \text{KV cache memory} \uparrow
 \]
 
-## 5. Prefill 能不能只计算最后一个 Q
+## Prefill 能不能只计算最后一个 Q
 
 直觉上，好像我们只需要预测：
 
@@ -403,11 +403,11 @@ T \uparrow \quad \Rightarrow \quad \text{KV cache memory} \uparrow
 P(x_{T+1} \mid x_1,\dots,x_T)
 \]
 
-又因为最终只会取最后一个位置的 logits，所以似乎只需要最后一个位置的 \(q_T\)。这个说法只对了一半。
+又因为最终只会取最后一个位置的 `logits`，所以似乎只需要最后一个位置的 \(q_T\)。这个说法只对了一半。
 
-### 5.1 为什么会觉得“只要最后一个 Q 就够了”
+### 为什么会觉得“只要最后一个 Q 就够了”
 
-如果只看单层 attention 的最后一个位置，那么它的计算确实是：
+如果只看单层注意力的最后一个位置，那么它的计算确实是：
 
 \[
 o_T^{(l)} =
@@ -429,7 +429,7 @@ o_T^{(l)} =
 
 所以在“单层、单个位置”的局部公式里，前面位置的 \(q_j^{(l)}\) 的确不直接出现。
 
-### 5.2 真正的问题在于上层的 K/V 从哪里来
+### 真正的问题在于上层的 K/V 从哪里来
 
 要算第 \(l\) 层最后一个位置的输出，你不仅需要：
 
@@ -443,20 +443,20 @@ q_T^{(l)}
 K_{\le T}^{(l)}, \quad V_{\le T}^{(l)}
 \]
 
-但这些 \(K/V\) 不是白来的。它们来自第 \(l-1\) 层所有位置的 hidden states：
+但这些 \(K/V\) 不是白来的。它们来自第 \(l-1\) 层所有位置的隐藏状态：
 
 \[
 k_j^{(l)} = W_K^{(l)} h_j^{(l-1)}, \qquad
 v_j^{(l)} = W_V^{(l)} h_j^{(l-1)}
 \]
 
-也就是说，为了得到第 \(l\) 层全部历史位置的 \(K/V\)，你必须先得到第 \(l-1\) 层全部历史位置的 hidden states：
+也就是说，为了得到第 \(l\) 层全部历史位置的 \(K/V\)，你必须先得到第 \(l-1\) 层全部历史位置的隐藏状态：
 
 \[
 H^{(l-1)} \in \mathbb{R}^{T \times d_{\text{model}}}
 \]
 
-而这些 hidden states 又来自更低一层的 attention 和 MLP。于是会形成一条完整递推链：
+而这些隐藏状态又来自更低一层的注意力和 MLP。于是会形成一条完整递推链：
 
 \[
 H^{(0)}
@@ -474,13 +474,13 @@ H^{(0)}
 }
 \]
 
-### 5.3 更准确的结论
+### 更准确的结论
 
 更准确地说：
 
-1. 在某一层内部，算最后一个位置时，前面位置的 \(q\) 不直接进入这一层最后一个位置的 attention 公式。
-2. 但在整个多层 Transformer 里，前面位置的 hidden state 必须先被算出来，才能生成上层需要的历史 \(K/V\)。
-3. 因此标准的 `prefill` 不能只靠“最后一个位置的 \(q\)”完成，它本质上仍然需要整段 prompt 的完整前向。
+1. 在某一层内部，计算最后一个位置时，前面位置的 \(q\) 不直接进入这一层最后一个位置的注意力公式。
+2. 但在整个多层 Transformer 里，前面位置的隐藏状态必须先被算出来，才能生成上层需要的历史 \(K/V\)。
+3. 因此标准的 `prefill` 不能只靠“最后一个位置的 \(q\)”完成，它本质上仍然需要整段提示的完整前向。
 
 也就是说，下面这个说法不成立：
 
@@ -494,10 +494,11 @@ H^{(0)}
 \text{prefill} \equiv \text{完整处理整段 prompt，并顺手建立各层历史 } K/V
 \]
 
-## 6. 最小实现
+## 最小实现
 
 ```python
 import math
+
 import torch
 import torch.nn as nn
 
@@ -534,15 +535,15 @@ class TinyAttention(nn.Module):
         return self.o_proj(out), k_all, v_all  # out: [B, T_new, D]
 ```
 
-第一，`prefill` 时，`x` 是整段 prompt，`past_k/past_v` 为空，返回的 `k_all/v_all` 就是初始化后的 cache。
+第一，`prefill` 时，`x` 是整段提示，`past_k/past_v` 为空，返回的 `k_all/v_all` 就是初始化后的缓存。
 
-第二，`decode` 时，`x` 通常只包含一个新 token，而 `past_k/past_v` 是历史 cache，新的 `k/v` 会被拼接到末尾。
+第二，`decode` 时，`x` 通常只包含一个新 token，而 `past_k/past_v` 是历史缓存，新的 `k/v` 会被拼接到末尾。
 
-## 7. 从实现看 KV Cache 的整体流程
+## 从实现看 KV Cache 的整体流程
 
-### 7.1 cache tensor 在保存什么
+### 缓存张量在保存什么
 
-在工程实现里，每层 cache 常见的形状是：
+在工程实现里，每层缓存常见的形状是：
 
 \[
 [B, H_{kv}, T, D]
@@ -550,33 +551,33 @@ class TinyAttention(nn.Module):
 
 其中：
 
-- \(B\)：batch size
+- \(B\)：批次大小
 - \(H_{kv}\)：KV 头数
 - \(T\)：当前缓存长度
-- \(D\)：单个 KV head 的维度
+- \(D\)：单个 KV 头的维度
 
-也有实现会把维度组织成其他顺序，但本质都一样：每层都在保存 batch 里每个样本、每个 KV head、每个历史位置的 \(K/V\) 向量。
+也有实现会把维度组织成其他顺序，但本质都一样：每层都在保存批次里每个样本、每个 KV 头、每个历史位置的 \(K/V\) 向量。
 
-### 7.2 prefill 时 cache 怎么写入
+### Prefill 时如何写入缓存
 
-`prefill` 会把整段 prompt 一次性过模型。在每一层中：
+`prefill` 会把整段提示一次性送入模型。在每一层中：
 
 1. 计算整段输入的 \(K/V\)
-2. 将对应层的 \(K/V\) 作为初始 cache 返回
+2. 将对应层的 \(K/V\) 作为初始缓存返回
 
-所以 `prefill` 结束后，cache 里已经有了 prompt 的完整历史。
+所以 `prefill` 结束后，缓存里已经有了提示的完整历史。
 
-### 7.3 decode 时 cache 怎么追加
+### Decode 时如何追加缓存
 
 `decode` 每次只输入一个新 token。在每一层中：
 
 1. 计算当前 token 的 \(k/v\)
-2. 和历史 cache 进行拼接
-3. 用当前 token 的 \(q\) 对整段历史 \(K/V\) 做 attention
+2. 和历史缓存进行拼接
+3. 用当前 token 的 \(q\) 对整段历史 \(K/V\) 做注意力计算
 
-因此 decode 不是“重算整段历史”，而是“读取历史 cache，并在末尾追加一个新位置”。
+因此 `decode` 不是“重算整段历史”，而是“读取历史缓存，并在末尾追加一个新位置”。
 
-### 7.4 为什么最后只取 `logits[:, -1, :]`
+### 为什么最后只取 `logits[:, -1, :]`
 
 给定输入：
 
@@ -584,19 +585,19 @@ class TinyAttention(nn.Module):
 x_1,\dots,x_T
 \]
 
-模型会输出每个位置的 logits：
+模型会输出每个位置的 `logits`：
 
 \[
 Z \in \mathbb{R}^{T \times |\mathcal V|}
 \]
 
-如果带 batch，则常见形状为：
+如果带批次，则常见形状为：
 
 \[
 Z \in \mathbb{R}^{B \times T \times |\mathcal V|}
 \]
 
-其中最后一个位置的 logits：
+其中最后一个位置的 `logits`：
 
 \[
 z_T \in \mathbb{R}^{|\mathcal V|}
@@ -614,15 +615,15 @@ P(x_{T+1} \mid x_1,\dots,x_T)
 next_token_logits = logits[:, -1, :]  # [B, |V|]
 ```
 
-### 7.5 为什么单个 token 的 logits 仍然需要历史 KV
+### 为什么单个 token 的 `logits` 仍然需要历史 KV
 
-如果已经拿到了最后一层最后一个位置的 hidden state：
+如果已经拿到了最后一层最后一个位置的隐藏状态：
 
 \[
 h_T^{(L)} \in \mathbb{R}^{d_{\text{model}}}
 \]
 
-那么 logits 只是一个线性投影：
+那么 `logits` 只是一个线性投影：
 
 \[
 z_T = W_{\text{vocab}} h_T^{(L)},
@@ -630,7 +631,7 @@ z_T = W_{\text{vocab}} h_T^{(L)},
 W_{\text{vocab}} \in \mathbb{R}^{|\mathcal V| \times d_{\text{model}}}
 \]
 
-这一步本身不需要历史 \(K/V\)。但问题在于，得到 \(h_T^{(L)}\) 之前，每一层 attention 都需要读取历史 \(K/V\)。所以更准确的说法是：
+这一步本身不需要历史 \(K/V\)。但问题在于，得到 \(h_T^{(L)}\) 之前，每一层注意力都需要读取历史 \(K/V\)。所以更准确的说法是：
 
 \[
 \boxed{

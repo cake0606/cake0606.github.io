@@ -1,31 +1,31 @@
 # GRPO
 
-GRPO（Group Relative Policy Optimization）可以看作 PPO 在大语言模型后训练场景中的一种改写。它保留了“限制单次策略更新幅度”的基本思想，但 advantage 的来源不再主要依赖 value model，而是直接来自同一个 query 下多条回答之间的相对 reward。
+GRPO（Group Relative Policy Optimization）可以看作 PPO 在大语言模型后训练场景中的一种改写。它保留了“限制单次策略更新幅度”的基本思想，但优势估计不再主要依赖价值模型，而是直接来自同一个查询下多条回答之间的相对奖励。
 
 如果只把 GRPO 记成“PPO + KL”，很容易把它看成若干零散技巧的拼接。更自然的理解方式，是沿着一条完整训练链去看它：
 
 `query -> sample multiple responses -> reward -> group-wise advantage -> score fixed responses -> token logprobs -> ratio / KL -> update policy`
 
-只要这条链条顺下来，GRPO 里的组内标准化、固定 response 打分、token-level ratio、reference KL 和两层 mean 就都会各归其位。
+只要这条链条顺下来，GRPO 里的组内标准化、固定回答打分、token 级概率比、参考模型 KL 和两层 `mean` 就都会各归其位。
 
-## GRPO 在解决什么问题
+## GRPO 解决的问题
 
 语言模型后训练的典型流程，不是“给一个状态选一个动作”，而是：
 
-1. 给定一个 query。
-2. 当前策略对这个 query 采样多条 response。
-3. 用规则、verifier 或 reward model 对这些 response 打分。
+1. 给定一个查询。
+2. 当前策略对这个查询采样多条回答。
+3. 用规则、验证器或奖励模型对这些回答打分。
 4. 根据打分结果更新策略。
 
-如果只按 reward 高低直接提高或降低 response 的概率，策略更新仍然可能过于剧烈。模型会很快偏离 rollout 时的分布，训练稳定性也会随之下降。GRPO 与 PPO 一样，首先要解决的就是这个问题：既要让更好的回答获得更高概率，又要限制单次更新幅度。
+如果只按奖励高低直接提高或降低回答的概率，策略更新仍然可能过于剧烈。模型会很快偏离采样时的分布，训练稳定性也会随之下降。GRPO 与 PPO 一样，首先要解决的就是这个问题：既要让更好的回答获得更高概率，又要限制单次更新幅度。
 
-与 PPO 常见实现不同的是，GRPO 通常不依赖 critic 去估计 baseline，而是直接在同一个 query 对应的一组回答内部做相对比较。某条 response 的“好坏”因此不只是绝对 reward 的问题，而是它相对同组其他 response 的位置。
+与 PPO 的常见实现不同，GRPO 通常不依赖价值网络估计基线，而是直接在同一个查询对应的一组回答内部做相对比较。某条回答的“好坏”因此不只取决于绝对奖励，还取决于它相对同组其他回答的位置。
 
 ## 核心量与关键公式
 
-### 一组回答与回答级别 reward
+### 一组回答与回答级奖励
 
-对同一个 query \(x\)，当前策略会采样出一组回答：
+对同一个查询 \(x\)，当前策略会采样出一组回答：
 
 \[
 \{y_1, y_2, \dots, y_G\}
@@ -33,17 +33,17 @@ GRPO（Group Relative Policy Optimization）可以看作 PPO 在大语言模型�
 
 其中 \(G\) 对应实现里的 `group_size`。
 
-每条回答 \(y_i\) 对应一个回答级别的 reward：
+每条回答 \(y_i\) 对应一个回答级奖励：
 
 \[
 r_i
 \]
 
-这个 reward 可以来自规则、reward model 或 verifier。它的作用是评价整条 response 的质量，而不是直接参与 token 级别的概率比计算。
+这个奖励可以来自规则、奖励模型或验证器。它的作用是评价整条回答的质量，而不是直接参与 token 级别的概率比计算。
 
-### 组内 advantage
+### 组内优势估计
 
-GRPO 的关键变化之一，是 advantage 不再由 value function 估计，而是直接在组内对 reward 做标准化。最常见的形式是：
+GRPO 的关键变化之一，是优势不再由价值函数估计，而是直接在组内对奖励做标准化。最常见的形式是：
 
 \[
 A_i = \frac{r_i - \mu_{\text{group}}}{\sigma_{\text{group}} + \epsilon}
@@ -51,24 +51,24 @@ A_i = \frac{r_i - \mu_{\text{group}}}{\sigma_{\text{group}} + \epsilon}
 
 其中：
 
-- \(\mu_{\text{group}}\) 是当前组 reward 的均值
-- \(\sigma_{\text{group}}\) 是当前组 reward 的标准差
+- \(\mu_{\text{group}}\) 是当前组奖励的均值
+- \(\sigma_{\text{group}}\) 是当前组奖励的标准差
 - \(\epsilon\) 是防止除零的稳定项
 
-这条公式表达的其实很直接：一条回答值不值得在本轮更新中被鼓励，不是单独看它的绝对 reward，而是看它相对组内平均水平高多少或低多少。
+这条公式表达得很直接：一条回答值不值得在本轮更新中被鼓励，不是单独看它的绝对奖励，而是看它相对组内平均水平高多少或低多少。
 
 > **实现细节**：这里是减均值后除以标准差，不是除以方差。  
-> **常见误区**：标准化范围是组内，而不是整个 batch。如果把不同 query 的回答混在一起归一化，就不再是在比较“同一题目下谁更好”。
+> **常见误区**：标准化范围是组内，而不是整个批次。如果把不同查询的回答混在一起归一化，就不再是在比较“同一题目下谁更好”。
 
-### token-level log probability
+### Token 级对数概率
 
-虽然 reward 和 advantage 都是回答级别的量，但策略更新仍然发生在 token 级别。对一条固定回答 \(y=(y_1,\dots,y_T)\)，模型在第 \(t\) 个 token 上的 log probability 表示为：
+虽然奖励和优势都是回答级别的量，但策略更新仍然发生在 token 级别。对一条固定回答 \(y=(y_1,\dots,y_T)\)，模型在第 \(t\) 个 token 上的对数概率表示为：
 
 \[
 \log \pi_\theta(y_t \mid x, y_{<t})
 \]
 
-这意味着 GRPO 真正优化的，不是一个抽象的“整条 response 概率”，而是这条 response 里每个生成 token 在当前策略下的条件概率。
+这意味着 GRPO 真正优化的，不是一个抽象的“整条回答概率”，而是这条回答里每个生成 token 在当前策略下的条件概率。
 
 ### 新旧策略概率比
 
@@ -80,7 +80,7 @@ r_t(\theta)=
 {\pi_{\theta_{\text{old}}}(y_t \mid x, y_{<t})}
 \]
 
-在实现中，它通常通过 log probability 的差值来计算：
+在实现中，它通常通过对数概率的差值来计算：
 
 \[
 r_t(\theta)=
@@ -93,9 +93,9 @@ r_t(\theta)=
 
 这就是为什么代码里会先拿到 `new_lp` 和 `old_lp`，再做 `torch.exp(new_lp - old_lp)`。
 
-### reference KL
+### 参考模型 KL
 
-为了防止当前策略偏离参考分布太远，GRPO 常常还会引入 reference model，并加入一个 KL 惩罚项。一个常见的 token-level 估计器是：
+为了防止当前策略偏离参考分布太远，GRPO 常常还会引入参考模型，并加入一个 KL 惩罚项。一个常见的 token 级估计器是：
 
 \[
 \mathrm{KL}_t \approx
@@ -112,11 +112,11 @@ kl = torch.exp(delta) - delta - 1
 
 这一步的作用不是增强探索，而是限制当前策略偏离参考模型太远。
 
-> **补充说明**：reference KL 和 PPO 中常见的 entropy bonus 不是一回事。entropy bonus 主要用来维持分布宽度，reference KL 则更像是在限制策略漂移。
+> **补充说明**：参考模型 KL 和 PPO 中常见的熵奖励不是一回事。熵奖励主要用来维持分布宽度，参考模型 KL 则用于限制策略漂移。
 
 ### GRPO 的目标函数
 
-把这些量放在一起，一个常见的 GRPO-style objective 可以写成：
+把这些量放在一起，一个常见的 GRPO 风格目标函数可以写成：
 
 \[
 \mathcal{L}_{\text{GRPO}} =
@@ -129,29 +129,29 @@ kl = torch.exp(delta) - delta - 1
 其中：
 
 - \(r_t\) 是 token 级别的新旧策略概率比
-- \(A_i\) 是回答 \(i\) 的组内 advantage
-- \(\epsilon\) 是 clipping 范围
+- \(A_i\) 是回答 \(i\) 的组内优势
+- \(\epsilon\) 是截断范围
 - \(\beta\) 是 KL 惩罚系数
 
-这里最容易让人卡住的地方，是回答级别量和 token 级别量如何结合。实际上，GRPO 在最小实现里通常采用一种很直接的处理：同一条回答内部的所有生成 token，共享这条回答对应的 advantage。
+这里最容易让人卡住的地方，是回答级别量和 token 级别量如何结合。GRPO 的最小实现通常采用一种直接的处理：同一条回答内部的所有生成 token，共享这条回答对应的优势。
 
 ## 一条完整的 GRPO 执行链
 
 如果把公式放回训练流程，GRPO 的一个最小更新链条可以写成：
 
-1. 对同一个 query 采样一组 response。
-2. 为每条 response 计算 reward。
-3. 在组内把 reward 标准化成 advantage。
-4. 固定这些 response，不再重新生成。
-5. 让当前策略、旧策略和 reference model 对同一批固定 response 逐 token 打分。
-6. 用 `ratio + clipping + reference KL` 构造 loss。
-7. 先在 token 级别聚合，再在回答级别和 batch 级别聚合，最后更新当前策略。
+1. 对同一个查询采样一组回答。
+2. 为每条回答计算奖励。
+3. 在组内把奖励标准化成优势。
+4. 固定这些回答，不再重新生成。
+5. 让当前策略、旧策略和参考模型对同一批固定回答逐 token 打分。
+6. 用概率比、截断与参考模型 KL 构造损失。
+7. 先在 token 级别聚合，再在回答级别和批次级别聚合，最后更新当前策略。
 
-这条链里最关键的前提只有一个：`new_logprobs`、`old_logprobs` 和 `ref_logprobs` 必须都来自同一条固定 response。否则一旦不同模型生成的 token 序列发生错位，ratio 和 KL 就不再有意义。
+这条链里最关键的前提只有一个：`new_logprobs`、`old_logprobs` 和 `ref_logprobs` 必须都来自同一条固定回答。否则一旦不同模型生成的 token 序列发生错位，概率比和 KL 就不再有意义。
 
 ## 最小实现
 
-下面给出一份最小但完整的 GRPO 示例实现。它聚焦于“给定已采样好的 trajectories，如何完成一次 GRPO 更新”，而不展开完整的 generation 系统。
+下面给出一份最小但完整的 GRPO 示例实现。它聚焦于“给定已采样好的轨迹，如何完成一次 GRPO 更新”，而不展开完整的生成系统。
 
 ```python
 from dataclasses import dataclass
@@ -352,7 +352,7 @@ class Trajectory:
     generated_positions: List[int]
 ```
 
-`Trajectory` 表示一条固定的 query-response 样本，以及这条样本在训练时需要用到的信息。
+`Trajectory` 表示一条固定的查询—回答样本，以及这条样本在训练时需要用到的信息。
 
 这里最关键的字段其实只有三个：
 
@@ -360,11 +360,11 @@ class Trajectory:
 - `full_input_ids`：完整 token 序列，用于重新打分
 - `generated_positions`：哪些位置属于生成 token
 
-它们共同决定了后面能否对这条固定 response 逐 token 计算 log probability。
+它们共同决定了后面能否对这条固定回答逐 token 计算对数概率。
 
 > **实现细节**：`generated_positions` 必须是 `full_input_ids` 里的绝对位置，而不是生成片段内部的相对位置。否则 `pos - 1` 的对齐关系会被破坏。
 
-### reward 如何变成 advantage
+### 奖励如何变成优势
 
 ```python
 def compute_advantages(self, rewards: List[float]) -> torch.Tensor:
@@ -382,9 +382,9 @@ def compute_advantages(self, rewards: List[float]) -> torch.Tensor:
 A_i = \frac{r_i - \mu_{\text{group}}}{\sigma_{\text{group}} + \epsilon}
 \]
 
-它的位置也非常明确：先从回答级别 reward 出发，再把它转成回答级别 advantage。GRPO 这里并不需要 critic，因为训练信号已经来自组内相对差异。
+它的位置也非常明确：先从回答级奖励出发，再把它转成回答级优势。GRPO 这里并不需要价值网络，因为训练信号已经来自组内相对差异。
 
-### 为什么模型可以对固定 response 逐 token 打分
+### 为什么模型可以对固定回答逐 token 打分
 
 ```python
 outputs = model(input_ids)
@@ -402,14 +402,14 @@ for pos in traj.generated_positions:
 P(y_t \mid x, y_{<t})
 \]
 
-因此，只要给定完整前缀，模型就能在每个位置输出“下一个 token 的整张词表分布”。生成时是从这个分布里采样一个 token，而这里做的是另外一件事：直接读取真实 token 在该分布下的 log probability。
+因此，只要给定完整前缀，模型就能在每个位置输出“下一个 token 的整张词表分布”。生成时是从这个分布里采样一个 token，而这里做的是另一件事：直接读取真实 token 在该分布下的对数概率。
 
 这也解释了为什么不能只取 `log_probs[pos - 1]`。因为它是一整张词表分布，真正需要的是其中真实 token 对应的那一个值，所以还必须再用 `token_id` 索引一次。
 
 > **补充说明**：这里之所以是 `pos - 1`，是因为自回归模型在位置 \(t\) 的输出，用来预测位置 \(t+1\) 的 token。  
 > **常见误区**：`pos == 0` 在这里本身就是不合理的，因为序列第一个 token 没有可用的前缀去预测它。
 
-### 回答级别 advantage 如何进入 token-level loss
+### 回答级优势如何进入 token 级损失
 
 ```python
 ratio = torch.exp(new_lp - old_lp)
@@ -432,7 +432,7 @@ token_loss = -torch.min(surr1, surr2) + self.kl_coef * kl_loss
 \right]
 \]
 
-`adv` 是一条回答对应的标量，`ratio` 是这条回答中每个生成 token 的向量。`adv.expand_as(ratio)` 的意思并不是“每个 token 有自己的 reward”，而是“这条回答整体被评价为更好或更差，因此它内部所有生成 token 在这轮更新中共享同一个优势方向”。
+`adv` 是一条回答对应的标量，`ratio` 是这条回答中每个生成 token 的向量。`adv.expand_as(ratio)` 的意思并不是“每个 token 有自己的奖励”，而是“这条回答整体被评价为更好或更差，因此它内部所有生成 token 在这轮更新中共享同一个优势方向”。
 
 ### 为什么会有两层 `mean`
 
@@ -444,9 +444,9 @@ return torch.stack(all_loss).mean()
 这两层聚合分别对应两件事：
 
 1. 先对单条回答内部所有生成 token 求平均
-2. 再对一个 batch 内的多条回答求平均
+2. 再对一个批次内的多条回答求平均
 
-也就是说，第一层是从 token-level 到 answer-level，第二层才是从 answer-level 到 batch-level。
+也就是说，第一层从 token 级聚合到回答级，第二层再从回答级聚合到批次级。
 
 ### `update_step` 如何把整条链串起来
 
@@ -463,31 +463,31 @@ loss = self.loss_fn(new_logprobs, old_logprobs, advantages, ref_logprobs)
 
 这一段几乎就是前面理论主线在代码里的压缩版：
 
-1. 提取 reward
-2. 计算组内 advantage
-3. 当前策略对固定 response 打分
-4. reference model 对同一批 response 打分
-5. 连同 rollout 时保存的 `old_logprobs` 一起进入 loss
+1. 提取奖励
+2. 计算组内优势
+3. 当前策略对固定回答打分
+4. 参考模型对同一批回答打分
+5. 连同采样时保存的 `old_logprobs` 一起进入损失
 6. 反向传播并更新当前策略
 
-`old_logprobs` 没有在这里重新计算，是因为它代表 rollout 时的旧策略分布，它应该被当作一个冻结的比较基准。
+`old_logprobs` 没有在这里重新计算，因为它代表采样时的旧策略分布，应被当作一个冻结的比较基准。
 
 ## 实现细节与易混淆点
 
-### 为什么 old / new / ref 必须评分同一条 response
+### 为什么旧策略、当前策略和参考模型必须评分同一条回答
 
-因为 ratio 和 KL 的前提是：比较的对象必须是同一个条件分布下的同一个 token。如果让不同模型各自重新生成 response，只要其中一个模型多一个 token 或少一个 token，后面的序列就会整体错位，逐 token 比较立即失去意义。
+因为概率比和 KL 的前提是：比较的对象必须是同一个条件分布下的同一个 token。如果让不同模型各自重新生成回答，只要其中一个模型多一个 token 或少一个 token，后面的序列就会整体错位，逐 token 比较立即失去意义。
 
 ### `ref_model` 为什么要单独保留
 
-即使 reference model 初始参数来自旧模型或当前模型的拷贝，它在训练逻辑上也应是一个单独对象。因为它承担的是“稳定参考分布”的角色，而不是参与当前这轮参数更新。
+即使参考模型的初始参数来自旧模型或当前模型的拷贝，它在训练逻辑上也应是一个单独对象。因为它承担的是“稳定参考分布”的角色，而不是参与当前这轮参数更新。
 
 ## 总结
 
-GRPO 的重点并不在于引入了一个完全不同的优化器，而是在 PPO 风格的受限更新框架上，把训练信号从“critic 估计 advantage”转成了“组内 reward 相对差异”，并进一步用 reference KL 约束策略漂移。
+GRPO 的重点并不在于引入一个完全不同的优化器，而是在 PPO 风格的受限更新框架上，把训练信号从“价值网络估计优势”转成“组内奖励相对差异”，并进一步用参考模型 KL 约束策略漂移。
 
 真正把 GRPO 理清楚，关键是顺着这条链条走：
 
 `sample responses -> reward -> group-wise advantage -> score fixed responses -> ratio / KL -> token loss -> answer mean -> batch mean`
 
-当这条链条顺下来之后，为什么要组内标准化、为什么可以对固定 response 计算 logprobs、为什么要用 `log_probs[pos - 1, token_id]`、为什么会有两层 `mean`，这些问题都会自然落到各自的位置上。
+当这条链条顺下来之后，为什么要组内标准化、为什么可以对固定回答计算对数概率、为什么要用 `log_probs[pos - 1, token_id]`、为什么会有两层 `mean`，这些问题都会自然落到各自的位置上。
