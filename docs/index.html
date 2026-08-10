@@ -14,7 +14,7 @@
     href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   >
-  <link rel="stylesheet" href="style.css?v=20260810-3">
+  <link rel="stylesheet" href="style.css?v=20260811-1">
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -120,11 +120,16 @@
         <p class="eyebrow">03 / Plan</p>
         <h2>Plan</h2>
       </header>
-      <ul class="plan-list" aria-label="Work plan"></ul>
-      <p class="empty-state">No plans published yet.</p>
+      <div
+        id="plan-groups"
+        class="plan-groups"
+        aria-live="polite"
+        aria-busy="true"
+      ></div>
+      <p id="plan-state" class="empty-state" role="status">Loading plans…</p>
     </section>
   </main>
 
-  <script src="script.js?v=20260810-3"></script>
+  <script src="script.js?v=20260811-1"></script>
 </body>
 </html>

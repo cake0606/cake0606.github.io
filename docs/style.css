@@ -328,11 +328,24 @@ button {
   color: var(--accent);
 }
 
+.plan-groups {
+  display: grid;
+  gap: 2rem;
+}
+
+.plan-group-title {
+  margin: 0 0 0.35rem;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
 .plan-list {
   display: grid;
   gap: 0;
   margin: 0;
   padding: 0;
+  border-top: 1px solid var(--border);
   list-style: none;
 }
 

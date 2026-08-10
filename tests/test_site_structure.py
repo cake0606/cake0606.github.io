@@ -168,6 +168,8 @@ class HomepageParser(HTMLParser):
         self.nav_targets = []
         self.note_links = []
         self.project_entries = []
+        self.plan_mounts = []
+        self.plan_states = []
         self.top_level_summaries = []
         self.second_level_summaries = []
         self.local_assets = []
@@ -187,6 +189,12 @@ class HomepageParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         attributes = self._attributes(attrs)
         classes = self._classes(attributes)
+
+        if attributes.get("id") == "plan-groups":
+            self.plan_mounts.append((tag, attributes))
+
+        if attributes.get("id") == "plan-state":
+            self.plan_states.append((tag, attributes))
 
         if tag == "section" and attributes.get("id"):
             self.section_ids.append(attributes["id"])
@@ -393,6 +401,20 @@ class HomepageTests(unittest.TestCase):
         self.assertIn("projects", self.parser.section_ids)
         self.assertFalse(self.parser.project_entries)
 
+    def test_plan_exposes_the_runtime_mount_and_state(self):
+        self.assertEqual(len(self.parser.plan_mounts), 1)
+        mount_tag, mount = self.parser.plan_mounts[0]
+        self.assertEqual(mount_tag, "div")
+        self.assertIn("plan-groups", mount["class"].split())
+        self.assertEqual(mount["aria-live"], "polite")
+        self.assertEqual(mount["aria-busy"], "true")
+
+        self.assertEqual(len(self.parser.plan_states), 1)
+        state_tag, state = self.parser.plan_states[0]
+        self.assertEqual(state_tag, "p")
+        self.assertIn("empty-state", state["class"].split())
+        self.assertEqual(state["role"], "status")
+
     def test_plan_data_matches_the_approved_initial_content(self):
         self.assertIsInstance(self.plan_data, list)
         actual_groups = tuple(
@@ -472,7 +494,7 @@ class HomepageTests(unittest.TestCase):
         self.assertTrue(self.parser.local_assets)
         for asset in self.parser.local_assets:
             with self.subTest(asset=asset):
-                self.assertEqual(parse_qs(urlparse(asset).query).get("v"), ["20260810-3"], asset)
+                self.assertEqual(parse_qs(urlparse(asset).query).get("v"), ["20260811-1"], asset)
 
 
 class ViewerIntegrationTests(unittest.TestCase):
