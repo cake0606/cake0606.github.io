@@ -4,7 +4,7 @@
 
 **Goal:** 重写一篇 nano-vLLM KV Cache 笔记，并配套一张可编辑的 draw.io 架构图和网页 SVG 样例。
 
-**Architecture:** 继续使用现有 `note.html?path=infra/nano-vllm/kvcache_and_paged_attention.md` 动态阅读器，不复制 HTML 页面。图形资产以 `.drawio` 为编辑源、`.svg` 为发布文件，Markdown 用相对路径嵌入 SVG；结构测试直接检查 XML、标题层级和内容契约。
+**Architecture:** 继续使用现有 `note.html?path=infra/nano-vllm/kvcache_and_paged_attention.md` 动态阅读器，不复制 HTML 页面。图形资产以 `.drawio` 为编辑源、`.svg` 为发布文件，Markdown 用相对路径嵌入 SVG；阅读器按 Markdown 文件所在目录解析相对资源地址。结构测试直接检查路径纯函数、XML、标题层级和内容契约。
 
 **Tech Stack:** Markdown、SVG 1.1、draw.io `mxGraphModel` XML、Python `unittest`、现有 Marked/Highlight.js/KaTeX 阅读器。
 
@@ -15,11 +15,75 @@
 - 不在本试点中实现目录自动扫描。
 - 桌面端继续同时显示左右导航；窄屏继续沿用现有按需展开行为。
 - 不引入新的前端运行时依赖或绘图库。
+- 相对图片路径必须相对于 Markdown 源文件解析，且不能逃逸 `docs/` 根目录。
 - 图形使用纯白背景、莫兰迪粉色描边与低饱和辅助色。
 - 所有代码围栏使用完整语言名 `python` 或 `text`。
 - 技术事实以 nano-vLLM 官方 `block_manager.py`、`model_runner.py` 和 PagedAttention 原始论文为依据。
 
 ---
+
+### Task 0: 让统一阅读器正确解析 Markdown 相对资源
+
+**Files:**
+- Modify: `tests/note-paths.test.js`
+- Modify: `docs/note-paths.js`
+- Modify: `docs/note.js`
+- Modify: `docs/note.html`
+- Modify: `docs/llm/ppo.html`
+- Modify: `docs/llm/grpo.html`
+- Modify: `docs/llm/concepts.html`
+- Modify: `tests/test_site_structure.py`
+
+**Interfaces:**
+- Consumes: 已规范化的 Markdown 路径、Markdown 中的原始资源地址、当前阅读器文档前缀。
+- Produces: `resolveNoteAssetHref(notePath, href, prefix)`；相对地址按笔记目录解析，外部与根地址保持不变，越界路径返回 `null`。
+
+- [ ] **Step 1: 写路径解析失败测试**
+
+在 `tests/note-paths.test.js` 中覆盖：
+
+```javascript
+assert.equal(
+  NotePaths.resolveNoteAssetHref(
+    "infra/nano-vllm/kvcache_and_paged_attention.md",
+    "../../assets/infra/nano-vllm/kv-cache-dataflow.svg",
+    ""
+  ),
+  "assets/infra/nano-vllm/kv-cache-dataflow.svg"
+);
+```
+
+同一测试还要覆盖 `prefix = "../"`、外部 URL 与根路径原样保留，以及逃逸 `docs/` 根目录时返回 `null`。
+
+- [ ] **Step 2: 运行测试并确认红灯**
+
+Run: `node tests\note-paths.test.js`
+
+Expected: FAIL，提示 `resolveNoteAssetHref` 不存在。
+
+- [ ] **Step 3: 实现纯路径函数并接入阅读器**
+
+在 `docs/note-paths.js` 中实现并导出 `resolveNoteAssetHref`。在 `docs/note.js` 把 Markdown 转成 HTML 后遍历 `img[src]`，使用当前笔记路径与 `getDocumentPrefix()` 重写相对 `src`，再继续生成标题目录。
+
+所有阅读器页面的本地资源缓存版本从 `20260810-2` 统一更新为 `20260810-3`，并同步更新结构测试的期望值；首页版本保持不变。
+
+- [ ] **Step 4: 运行相关测试并确认绿灯**
+
+```powershell
+node tests\note-paths.test.js
+.venv\Scripts\python.exe -m unittest tests.test_site_structure.ViewerIntegrationTests -v
+node --check docs\note-paths.js
+node --check docs\note.js
+```
+
+Expected: 全部退出码为 0。
+
+- [ ] **Step 5: 提交阅读器适配**
+
+```powershell
+git add tests/note-paths.test.js tests/test_site_structure.py docs/note-paths.js docs/note.js docs/note.html docs/llm/ppo.html docs/llm/grpo.html docs/llm/concepts.html
+git commit -m "feat: resolve note-relative assets"
+```
 
 ### Task 1: 锁定试点内容与图形契约
 
