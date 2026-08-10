@@ -110,6 +110,20 @@ class HomepageParser(HTMLParser):
             self._details_levels.pop()
 
 
+class ViewerDocumentParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.script_sources = []
+        self.note_path = None
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "script" and attributes.get("src"):
+            self.script_sources.append(attributes["src"])
+        if tag == "body":
+            self.note_path = attributes.get("data-note-path")
+
+
 class NoteTopologyTests(unittest.TestCase):
     def test_every_organized_note_exists(self):
         """Removing or misplacing an approved note must break the site catalog."""
@@ -181,6 +195,44 @@ class HomepageTests(unittest.TestCase):
         for color in ("#FFFFFF", "#8E5F68", "#B98991", "#F4E8EA", "#FAF5F6"):
             with self.subTest(color=color):
                 self.assertIn(color, self.styles)
+
+
+class ViewerIntegrationTests(unittest.TestCase):
+    @staticmethod
+    def parse_document(relative_path):
+        parser = ViewerDocumentParser()
+        parser.feed((DOCS_DIR / relative_path).read_text(encoding="utf-8"))
+        return parser
+
+    def test_root_viewer_loads_path_module_before_viewer_logic(self):
+        """Loading note.js before its path API would break every homepage note link."""
+        parser = self.parse_document("note.html")
+        self.assertIn("note-paths.js", parser.script_sources)
+        self.assertIn("note.js", parser.script_sources)
+        self.assertLess(
+            parser.script_sources.index("note-paths.js"),
+            parser.script_sources.index("note.js"),
+        )
+
+    def test_compatibility_pages_load_existing_organized_notes(self):
+        """A stale embedded path or missing path module would break legacy URLs."""
+        compatibility_pages = {
+            "llm/ppo.html": "llm/rl/ppo.md",
+            "llm/grpo.html": "llm/rl/grpo.md",
+            "llm/concepts.html": "llm/concepts/concepts.md",
+        }
+
+        for page, expected_note_path in compatibility_pages.items():
+            with self.subTest(page=page):
+                parser = self.parse_document(page)
+                self.assertIn("../note-paths.js", parser.script_sources)
+                self.assertIn("../note.js", parser.script_sources)
+                self.assertLess(
+                    parser.script_sources.index("../note-paths.js"),
+                    parser.script_sources.index("../note.js"),
+                )
+                self.assertEqual(parser.note_path, expected_note_path)
+                self.assertTrue((DOCS_DIR / parser.note_path).is_file())
 
 
 if __name__ == "__main__":

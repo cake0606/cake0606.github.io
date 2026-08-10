@@ -14,17 +14,8 @@ const tocNav = document.getElementById("toc-nav");
 const notesNav = document.getElementById("notes-nav");
 const header = document.querySelector(".site-header");
 const embeddedMarkdown = document.getElementById("embedded-markdown");
-
-const NOTE_COLLECTIONS = {
-  rl: {
-    title: "Reinforcement Learning",
-    items: [
-      { slug: "ppo", title: "PPO", path: "rl/ppo.md" },
-      { slug: "grpo", title: "GRPO", path: "rl/grpo.md" },
-      { slug: "concepts", title: "RL Concepts", path: "rl/concepts.md" }
-    ]
-  }
-};
+const sidebarSectionTitle = document.querySelector(".sidebar-section-title");
+const notePaths = globalThis.NotePaths;
 
 function setTheme(theme) {
   if (theme === "light") {
@@ -64,20 +55,6 @@ function closePanelsOnDesktop() {
     togglePanel(notesSidebar, notesToggle, true);
     togglePanel(tocSidebar, tocToggle, true);
   }
-}
-
-function sanitizeNotePath(rawPath) {
-  const path = rawPath || "rl/ppo.md";
-  if (
-    path.includes("..") ||
-    path.startsWith("/") ||
-    path.startsWith("http://") ||
-    path.startsWith("https://") ||
-    !path.endsWith(".md")
-  ) {
-    return "rl/ppo.md";
-  }
-  return path;
 }
 
 function slugify(text, usedSlugs) {
@@ -164,31 +141,38 @@ function stripHeadingPrefix(text) {
   return text.replace(/^\s*\d+(?:\.\d+)*[\.\)]?\s+/, "").trim();
 }
 
-function getCurrentCollection() {
-  const key = body.dataset.noteSection || "rl";
-  return NOTE_COLLECTIONS[key] || NOTE_COLLECTIONS.rl;
+function getDocumentPrefix() {
+  const normalizedPath = window.location.pathname.replace(/\\/g, "/");
+  return normalizedPath.endsWith("/note.html") ? "" : "../";
 }
 
 function resolveNoteHref(item) {
-  const normalizedPath = window.location.pathname.replace(/\\/g, "/");
-  const isRlStandalone = /\/rl\/[^/]+\.html$/i.test(normalizedPath);
-  return isRlStandalone ? `${item.slug}.html` : `rl/${item.slug}.html`;
+  return notePaths.createViewerHref(item.path, getDocumentPrefix());
 }
 
 function resolveMarkdownFetchPath(path) {
-  const normalizedPath = window.location.pathname.replace(/\\/g, "/");
-  const isRlStandalone = /\/rl\/[^/]+\.html$/i.test(normalizedPath);
-  return isRlStandalone && path.startsWith("rl/") ? `../${path}` : path;
+  return `${getDocumentPrefix()}${path}`;
 }
 
 function buildNotesNav(activePath) {
-  const collection = getCurrentCollection();
-
   if (!notesNav) {
     return;
   }
 
   notesNav.innerHTML = "";
+  const collection = notePaths.getCollectionForPath(activePath);
+
+  if (!collection) {
+    if (sidebarSectionTitle) {
+      sidebarSectionTitle.textContent = "Notes";
+    }
+    notesNav.innerHTML = '<p class="toc-empty">No sibling notes available.</p>';
+    return;
+  }
+
+  if (sidebarSectionTitle) {
+    sidebarSectionTitle.textContent = collection.title;
+  }
 
   collection.items.forEach((item) => {
     const link = document.createElement("a");
@@ -202,7 +186,7 @@ function buildNotesNav(activePath) {
 
     const meta = document.createElement("span");
     meta.className = "note-link-meta";
-    meta.textContent = item.path.replace("rl/", "");
+    meta.textContent = item.path.split("/").pop();
 
     link.append(title, meta);
     notesNav.appendChild(link);
@@ -457,9 +441,37 @@ function renderMarkdown(markdown, path) {
   buildToc();
 }
 
+function showNoteError(title, detail) {
+  noteTitle.textContent = title;
+  noteHeading.textContent = title;
+  noteContent.innerHTML = "";
+
+  const message = document.createElement("p");
+  message.className = "note-error";
+  message.textContent = detail;
+  noteContent.appendChild(message);
+
+  tocNav.innerHTML = '<p class="toc-empty">No table of contents available.</p>';
+  document.title = `${title} | Note Viewer`;
+}
+
 async function loadNote() {
   const params = new URLSearchParams(window.location.search);
-  const path = sanitizeNotePath(body.dataset.notePath || params.get("path"));
+  const requestedPath = body.dataset.notePath || params.get("path");
+
+  if (!notePaths) {
+    showNoteError("Unable to load note", "The note path module is unavailable.");
+    return;
+  }
+
+  const path = notePaths.sanitizeNotePath(requestedPath);
+  if (!path) {
+    notePath.textContent = requestedPath || "";
+    buildNotesNav(null);
+    showNoteError("Invalid note path", "The requested Markdown path is not allowed.");
+    return;
+  }
+
   notePath.textContent = path;
   buildNotesNav(path);
 
@@ -477,13 +489,10 @@ async function loadNote() {
       return;
     }
 
-    noteTitle.textContent = "Unable to load note";
-    noteHeading.textContent = "Unable to load note";
     const detail = window.location.protocol === "file:"
       ? `${error.message}. Local file previews cannot fetch Markdown. Open a note page with embedded content or run a local web server.`
       : error.message;
-    noteContent.innerHTML = `<p class="note-error">${detail}</p>`;
-    tocNav.innerHTML = '<p class="toc-empty">No table of contents available.</p>';
+    showNoteError("Unable to load note", detail);
   }
 }
 

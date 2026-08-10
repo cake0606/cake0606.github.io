@@ -197,19 +197,25 @@ Run: `node --test tests/note-paths.test.js`
 
 Expected: PASS for valid paths, rejected paths, collection lookup, and encoded viewer links.
 
-- [ ] **Step 5: Update viewer loading and sibling navigation**
-
-Load `note-paths.js` immediately before `note.js` in `docs/note.html`. Replace the hard-coded RL catalog and fallback sanitization in `docs/note.js` with `globalThis.NotePaths`. Build sibling navigation from `getCollectionForPath(activePath)`, use encoded `note.html?path=...` links, and display an explicit "Invalid note path" error when sanitization returns `null`. Preserve fetch errors as explicit missing-note errors.
-
-- [ ] **Step 6: Preserve standalone HTML compatibility**
-
-Add `<script src="../note-paths.js"></script>` immediately before the existing `../note.js` script in `docs/llm/ppo.html`, `docs/llm/grpo.html`, and `docs/llm/concepts.html`. Update their `data-note-path` values to `llm/rl/ppo.md`, `llm/rl/grpo.md`, and `llm/concepts/concepts.md` respectively. Viewer link resolution uses `../note.html?path=...` and Markdown fetches use `../` when running from these one-level compatibility pages.
-
-- [ ] **Step 7: Add static viewer integration checks**
+- [ ] **Step 5: Add failing viewer integration checks**
 
 Extend `tests/test_site_structure.py` to assert `note.html` loads `note-paths.js` before `note.js`, each standalone compatibility page loads both scripts in that order, and every updated `data-note-path` resolves to an existing Markdown file below `docs/`.
 
-- [ ] **Step 8: Run the complete automated suite**
+- [ ] **Step 6: Run the viewer integration checks and verify the expected failure**
+
+Run: `.venv\Scripts\python.exe -m unittest tests.test_site_structure.ViewerIntegrationTests -v`
+
+Expected: FAIL because `note-paths.js` is not loaded and the compatibility pages still declare obsolete Markdown paths.
+
+- [ ] **Step 7: Update viewer loading and sibling navigation**
+
+Load `note-paths.js` immediately before `note.js` in `docs/note.html`. Replace the hard-coded RL catalog and fallback sanitization in `docs/note.js` with `globalThis.NotePaths`. Build sibling navigation from `getCollectionForPath(activePath)`, use encoded `note.html?path=...` links, and display an explicit "Invalid note path" error when sanitization returns `null`. Preserve fetch errors as explicit missing-note errors.
+
+- [ ] **Step 8: Preserve standalone HTML compatibility**
+
+Add `<script src="../note-paths.js"></script>` immediately before the existing `../note.js` script in `docs/llm/ppo.html`, `docs/llm/grpo.html`, and `docs/llm/concepts.html`. Update their `data-note-path` values to `llm/rl/ppo.md`, `llm/rl/grpo.md`, and `llm/concepts/concepts.md` respectively. Viewer link resolution uses `../note.html?path=...` and Markdown fetches use `../` when running from these one-level compatibility pages.
+
+- [ ] **Step 9: Run the complete automated suite**
 
 Run: `.venv\Scripts\python.exe -m unittest tests.test_site_structure -v`
 
@@ -217,7 +223,7 @@ Run: `node --test tests/note-paths.test.js`
 
 Expected: both suites PASS with no warnings or errors.
 
-- [ ] **Step 9: Commit the viewer update**
+- [ ] **Step 10: Commit the viewer update**
 
 ```powershell
 git add docs/note-paths.js docs/note.html docs/note.js docs/llm/ppo.html docs/llm/grpo.html docs/llm/concepts.html tests
