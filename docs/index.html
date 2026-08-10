@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta
     name="description"
-    content="Personal website for a developer and machine learning learner focused on reinforcement learning, engineering, and technical writing."
+    content="A focused home for Jie Zheng's projects, technical notes, and work plan."
   >
-  <title>Jie Zheng | Developer, RL Learner, Technical Notes</title>
+  <title>Jie Zheng | Projects, Notes, Plan</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   >
   <link rel="stylesheet" href="style.css">
@@ -21,30 +21,18 @@
 
   <header class="site-header" id="top">
     <div class="container nav-shell">
-      <a class="brand" href="#hero" aria-label="Home">
-        <span class="brand-mark">JZ</span>
+      <a class="brand" href="#projects" aria-label="Go to Projects">
+        <span class="brand-mark" aria-hidden="true">JZ</span>
         <span class="brand-text">
           <strong>Jie Zheng</strong>
           <span>Developer Notes</span>
         </span>
       </a>
 
-      <button
-        class="menu-toggle"
-        type="button"
-        aria-expanded="false"
-        aria-controls="site-nav"
-        aria-label="Open navigation"
-      >
-        <span></span>
-        <span></span>
-      </button>
-
-      <nav class="site-nav" id="site-nav" aria-label="Primary">
-        <a href="#about" class="nav-link">About</a>
+      <nav class="site-nav" aria-label="Primary">
         <a href="#projects" class="nav-link">Projects</a>
         <a href="#notes" class="nav-link">Notes</a>
-        <a href="#contact" class="nav-link">Contact</a>
+        <a href="#plan" class="nav-link">Plan</a>
       </nav>
 
       <button class="theme-toggle" type="button" aria-label="Toggle color theme">
@@ -54,163 +42,92 @@
     </div>
   </header>
 
-  <main id="main">
-    <section class="hero-section section" id="hero">
-      <div class="container hero-grid hero-grid-compact">
-        <div class="hero-copy">
-          <p class="eyebrow">Developer / RL Learner / Technical Writer</p>
-          <h1>Building readable systems, useful experiments, and clear notes.</h1>
-          <p class="hero-summary">
-            I work on machine learning engineering, reinforcement learning study, and
-            developer-focused tooling. This site is a compact home for projects and notes.
-          </p>
-          <div class="hero-actions">
-            <a class="button button-primary" href="#projects">Projects</a>
-            <a class="button button-secondary" href="#notes">Notes</a>
-          </div>
-        </div>
-
-        <div class="hero-mini-grid" aria-label="Current focus">
-          <article class="surface-card compact-card">
-            <p class="mini-label">Now studying</p>
-            <h2>RL Optimization</h2>
-            <p>PPO, GRPO, policy updates, and training behavior.</p>
-          </article>
-          <article class="surface-card compact-card">
-            <p class="mini-label">Work style</p>
-            <h2>Engineering-first</h2>
-            <p>Readable structure, reproducible runs, and practical output.</p>
-          </article>
-          <article class="surface-card compact-card">
-            <p class="mini-label">Writing</p>
-            <h2>Technical notes</h2>
-            <p>Implementation details, formulas, and links between code and theory.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="about">
-      <div class="container section-shell">
-        <div class="section-heading">
-          <p class="eyebrow">About</p>
-          <h2>Focused on practical machine learning and clear technical communication.</h2>
-        </div>
-        <div class="about-grid about-grid-compact">
-          <article class="surface-card">
-            <p>
-              I am interested in reinforcement learning, applied ML systems, and small
-              tools that improve the speed from idea to working result.
-            </p>
-          </article>
-          <article class="surface-card">
-            <ul class="compact-list">
-              <li>Reinforcement learning notes and experiments</li>
-              <li>ML engineering workflows and training utilities</li>
-              <li>Open-source side projects and technical writing</li>
-            </ul>
-          </article>
-        </div>
-      </div>
-    </section>
-
+  <main id="main" class="container page-shell">
     <section class="section" id="projects">
-      <div class="container section-shell">
-        <div class="section-heading">
-          <p class="eyebrow">Projects</p>
-          <h2>Selected work and experiments.</h2>
-        </div>
-        <div class="project-grid project-grid-compact">
-          <article class="surface-card project-card">
-            <div class="card-topline">
-              <span class="tag">Open Source</span>
-              <span class="meta-text">Python / LLM</span>
-            </div>
-            <h3>MedicalGPT</h3>
-            <p>Medical-domain LLM workflows, experiments, notes, and supporting tooling.</p>
-            <a href="#" class="text-link">Repository placeholder</a>
-          </article>
-          <article class="surface-card project-card">
-            <div class="card-topline">
-              <span class="tag">RL</span>
-              <span class="meta-text">Study + Code</span>
-            </div>
-            <h3>PPO Learning Sandbox</h3>
-            <p>Implementation-oriented notes on policy optimization and training logic.</p>
-            <a href="rl/ppo.html" class="text-link">Open note</a>
-          </article>
-          <article class="surface-card project-card">
-            <div class="card-topline">
-              <span class="tag">Tooling</span>
-              <span class="meta-text">Workflow</span>
-            </div>
-            <h3>Automation Utilities</h3>
-            <p>Lightweight scripts and helpers for local development and experimentation.</p>
-            <a href="#" class="text-link">Utilities placeholder</a>
-          </article>
-        </div>
-      </div>
+      <header class="section-heading">
+        <p class="eyebrow">01 / Projects</p>
+        <h1>Projects</h1>
+      </header>
+      <div class="project-list" aria-label="Published projects"></div>
+      <p class="empty-state">No projects published yet.</p>
     </section>
 
     <section class="section" id="notes">
-      <div class="container section-shell">
-        <div class="section-heading">
-          <p class="eyebrow">Notes</p>
-          <h2>Current reading and writing directions.</h2>
-        </div>
-        <div class="notes-grid">
-          <article class="surface-card note-card">
-            <p class="note-kicker">RL</p>
-            <h3>PPO</h3>
-            <p>From clipped objective to concrete PyTorch implementation details.</p>
-            <a href="rl/ppo.html" class="text-link">Read note</a>
-          </article>
-          <article class="surface-card note-card">
-            <p class="note-kicker">RL</p>
-            <h3>Concepts</h3>
-            <p>Core terminology, mental models, and compact conceptual references.</p>
-            <a href="rl/concepts.html" class="text-link">Read note</a>
-          </article>
-          <article class="surface-card note-card">
-            <p class="note-kicker">RL</p>
-            <h3>GRPO</h3>
-            <p>Working notes and open questions around group-based optimization.</p>
-            <a href="rl/grpo.html" class="text-link">Read note</a>
-          </article>
-        </div>
+      <header class="section-heading">
+        <p class="eyebrow">02 / Notes</p>
+        <h2>Notes</h2>
+      </header>
+
+      <div class="note-tree" aria-label="Technical note directories">
+        <details class="note-directory note-directory-root" data-level="1">
+          <summary>Infra</summary>
+          <div class="directory-children">
+            <details class="note-directory note-directory-child" data-level="2">
+              <summary>CUDA</summary>
+              <ul class="note-file-list">
+                <li><a class="note-file-link" href="note.html?path=infra/cuda/cuda内存.md">cuda内存.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=infra/cuda/elementwise.md">elementwise.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=infra/cuda/点乘_softmax_norm.md">点乘_softmax_norm.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=infra/cuda/基础.md">基础.md</a></li>
+              </ul>
+            </details>
+
+            <details class="note-directory note-directory-child" data-level="2">
+              <summary>nano-vLLM</summary>
+              <ul class="note-file-list">
+                <li><a class="note-file-link" href="note.html?path=infra/nano-vllm/kvcache_and_paged_attention.md">kvcache_and_paged_attention.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=infra/nano-vllm/llm_engine.md">llm_engine.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=infra/nano-vllm/ModelRunner.md">ModelRunner.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=infra/nano-vllm/run_nano-vllm.md">run_nano-vllm.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=infra/nano-vllm/Scheduler.md">Scheduler.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=infra/nano-vllm/struct.md">struct.md</a></li>
+              </ul>
+            </details>
+
+            <details class="note-directory note-directory-child" data-level="2">
+              <summary>vLLM</summary>
+              <ul class="note-file-list">
+                <li><a class="note-file-link" href="note.html?path=infra/vllm/sampling.md">sampling.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=infra/vllm/scheduler.md">scheduler.md</a></li>
+              </ul>
+            </details>
+          </div>
+        </details>
+
+        <details class="note-directory note-directory-root" data-level="1">
+          <summary>LLM</summary>
+          <div class="directory-children">
+            <details class="note-directory note-directory-child" data-level="2">
+              <summary>RL</summary>
+              <ul class="note-file-list">
+                <li><a class="note-file-link" href="note.html?path=llm/rl/ppo.md">ppo.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=llm/rl/grpo.md">grpo.md</a></li>
+              </ul>
+            </details>
+
+            <details class="note-directory note-directory-child" data-level="2">
+              <summary>Concepts</summary>
+              <ul class="note-file-list">
+                <li><a class="note-file-link" href="note.html?path=llm/concepts/concepts.md">concepts.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=llm/concepts/gae.md">gae.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=llm/concepts/index.md">index.md</a></li>
+                <li><a class="note-file-link" href="note.html?path=llm/concepts/kvcache.md">kvcache.md</a></li>
+              </ul>
+            </details>
+          </div>
+        </details>
       </div>
     </section>
 
-    <section class="section" id="contact">
-      <div class="container section-shell">
-        <div class="section-heading">
-          <p class="eyebrow">Contact</p>
-          <h2>Open to technical discussion and collaboration.</h2>
-        </div>
-        <div class="contact-grid contact-grid-compact">
-          <article class="surface-card contact-card">
-            <h3>Links</h3>
-            <ul class="contact-list">
-              <li><span>GitHub</span><a href="https://github.com/your-name">github.com/your-name</a></li>
-              <li><span>Email</span><a href="mailto:your.email@example.com">your.email@example.com</a></li>
-            </ul>
-          </article>
-          <article class="surface-card contact-card">
-            <h3>Topics</h3>
-            <p>Reinforcement learning, ML engineering, tooling, and technical writing.</p>
-            <a class="button button-primary" href="mailto:your.email@example.com">Start a conversation</a>
-          </article>
-        </div>
-      </div>
+    <section class="section" id="plan">
+      <header class="section-heading">
+        <p class="eyebrow">03 / Plan</p>
+        <h2>Plan</h2>
+      </header>
+      <ul class="plan-list" aria-label="Work plan"></ul>
+      <p class="empty-state">No plans published yet.</p>
     </section>
   </main>
-
-  <footer class="site-footer">
-    <div class="container footer-shell">
-      <p>&copy; <span id="year"></span> Jie Zheng. Built for GitHub Pages with plain HTML, CSS, and JavaScript.</p>
-      <a href="#top" class="text-link">Back to top</a>
-    </div>
-  </footer>
 
   <script src="script.js"></script>
 </body>
