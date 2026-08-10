@@ -563,7 +563,7 @@ class InfraNotePilotTests(unittest.TestCase):
         self.assertTrue(markdown.startswith("# vLLM Sampling\n"))
         self.assertIn("## Sampling 解决的问题", markdown)
         self.assertIn(
-            "![vLLM Greedy Sampling 流程](../../assets/infra/vllm/greedy-sampling-flow.svg)",
+            "![vLLM Greedy Sampling 流程](../../assets/infra/vllm/greedy-sampling-flow.svg?v=20260810-2)",
             markdown,
         )
         for identifier in (
