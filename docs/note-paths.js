@@ -106,11 +106,61 @@
     return `${prefix}note.html?path=${encodeURIComponent(path)}`;
   }
 
+  function resolveNoteAssetHref(rawNotePath, rawHref, prefix = "") {
+    const notePath = sanitizeNotePath(rawNotePath);
+    if (!notePath || typeof rawHref !== "string" || typeof prefix !== "string") {
+      return null;
+    }
+
+    const href = rawHref.trim();
+    if (!href) {
+      return null;
+    }
+
+    if (
+      href.startsWith("/") ||
+      href.startsWith("#") ||
+      href.startsWith("?") ||
+      /^[a-z][a-z\d+.-]*:/i.test(href)
+    ) {
+      return href;
+    }
+
+    const suffixIndex = href.search(/[?#]/);
+    const relativePath = suffixIndex === -1 ? href : href.slice(0, suffixIndex);
+    const suffix = suffixIndex === -1 ? "" : href.slice(suffixIndex);
+    if (!relativePath || relativePath.includes("\\")) {
+      return null;
+    }
+
+    const resolvedSegments = notePath.split("/").slice(0, -1);
+    for (const segment of relativePath.split("/")) {
+      if (!segment || segment === ".") {
+        continue;
+      }
+      if (segment === "..") {
+        if (resolvedSegments.length === 0) {
+          return null;
+        }
+        resolvedSegments.pop();
+        continue;
+      }
+      resolvedSegments.push(segment);
+    }
+
+    if (resolvedSegments.length === 0) {
+      return null;
+    }
+
+    return `${prefix}${resolvedSegments.join("/")}${suffix}`;
+  }
+
   return {
     DEFAULT_NOTE_PATH,
     NOTE_COLLECTIONS,
     sanitizeNotePath,
     getCollectionForPath,
-    createViewerHref
+    createViewerHref,
+    resolveNoteAssetHref
   };
 });

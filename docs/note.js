@@ -132,6 +132,16 @@ function resolveMarkdownFetchPath(path) {
   return `${getDocumentPrefix()}${path}`;
 }
 
+function resolveEmbeddedAssets(path) {
+  noteContent.querySelectorAll("img[src]").forEach((image) => {
+    const rawSrc = image.getAttribute("src");
+    const resolvedSrc = notePaths.resolveNoteAssetHref(path, rawSrc, getDocumentPrefix());
+    if (resolvedSrc) {
+      image.setAttribute("src", resolvedSrc);
+    }
+  });
+}
+
 function buildNotesNav(activePath) {
   if (!notesNav) {
     return;
@@ -403,6 +413,7 @@ function renderMarkdown(markdown, path) {
   });
 
   noteContent.innerHTML = renderedHtml;
+  resolveEmbeddedAssets(path);
 
   const usedSlugs = new Set();
   const headings = Array.from(noteContent.querySelectorAll("h1, h2, h3, h4, h5, h6"));

@@ -345,7 +345,7 @@ class ViewerIntegrationTests(unittest.TestCase):
                 for asset in parser.local_assets:
                     self.assertEqual(
                         parse_qs(urlparse(asset).query).get("v"),
-                        ["20260810-2"],
+                        ["20260810-3"],
                         asset,
                     )
 
