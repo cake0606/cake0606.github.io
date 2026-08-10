@@ -449,7 +449,7 @@ function showNoteError(title, detail) {
 
 async function loadNote() {
   const params = new URLSearchParams(window.location.search);
-  const requestedPath = body.dataset.notePath || params.get("path");
+  const requestedPath = document.body.dataset.notePath || params.get("path");
 
   if (!notePaths) {
     showNoteError("Unable to load note", "The note path module is unavailable.");
