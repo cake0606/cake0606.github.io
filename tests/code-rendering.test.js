@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+  dedentCode,
   decorateCodeBlock,
   resolveLanguage
 } = require("../docs/code-rendering.js");
@@ -24,7 +25,7 @@ function createClassList(initialClasses = []) {
   };
 }
 
-function createBlock(classes) {
+function createBlock(classes, textContent = "") {
   const pre = {
     classList: createClassList(),
     dataset: {}
@@ -32,9 +33,25 @@ function createBlock(classes) {
   return {
     classList: createClassList(classes),
     parentElement: pre,
+    textContent,
     pre
   };
 }
+
+test("removes only the indentation shared by every non-empty code line", () => {
+  assert.equal(
+    dedentCode("    def run():\n        return value\n"),
+    "def run():\n    return value\n"
+  );
+  assert.equal(
+    dedentCode("\n\t\tif ready:\n\t\t\trun()\n\n"),
+    "\nif ready:\n\trun()\n\n"
+  );
+  assert.equal(
+    dedentCode("value = 1\n    nested = 2\n"),
+    "value = 1\n    nested = 2\n"
+  );
+});
 
 test("normalizes Python, CUDA, Bash, and text identifiers", () => {
   assert.deepEqual(resolveLanguage(["language-py"]), {

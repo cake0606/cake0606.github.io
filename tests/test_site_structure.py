@@ -45,6 +45,13 @@ MOVED_LLM_MARKDOWN = (
     "kvcache.md",
 )
 
+EMPTY_NOTE_PATHS = (
+    "infra/cuda/点乘_softmax_norm.md",
+    "llm/concepts/concepts.md",
+    "llm/concepts/gae.md",
+    "llm/concepts/index.md",
+)
+
 CODE_FENCE_PATTERN = re.compile(r"^\s*(?:>\s*)?(```|~~~)([^\s`]*)\s*$")
 
 
@@ -153,6 +160,27 @@ class ViewerDocumentParser(HTMLParser):
             self.theme_toggles.append(tag)
 
 
+class BrandMarkParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.marks = []
+        self._mark_text = None
+
+    def handle_starttag(self, tag, attrs):
+        classes = set(dict(attrs).get("class", "").split())
+        if tag == "span" and "brand-mark" in classes:
+            self._mark_text = []
+
+    def handle_data(self, data):
+        if self._mark_text is not None:
+            self._mark_text.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "span" and self._mark_text is not None:
+            self.marks.append("".join(self._mark_text).strip())
+            self._mark_text = None
+
+
 class NoteTopologyTests(unittest.TestCase):
     def test_every_organized_note_exists(self):
         """Removing or misplacing an approved note must break the site catalog."""
@@ -171,6 +199,24 @@ class NoteTopologyTests(unittest.TestCase):
         for filename in MOVED_LLM_MARKDOWN:
             with self.subTest(filename=filename):
                 self.assertFalse((DOCS_DIR / "llm" / filename).exists())
+
+    def test_published_notes_have_a_single_h1_or_remain_intentionally_empty(self):
+        """The reader needs one document title, while empty placeholders must stay empty."""
+        for relative_path in EXPECTED_NOTE_PATHS:
+            markdown = (DOCS_DIR / relative_path).read_text(encoding="utf-8")
+            with self.subTest(relative_path=relative_path):
+                if relative_path in EMPTY_NOTE_PATHS:
+                    self.assertEqual(markdown, "")
+                else:
+                    self.assertTrue(markdown.startswith("# "), relative_path)
+                    self.assertEqual(len(re.findall(r"(?m)^# ", markdown)), 1)
+
+    def test_published_notes_use_topic_specific_problem_headings(self):
+        """A topic heading remains meaningful outside the writing process that created it."""
+        for relative_path in EXPECTED_NOTE_PATHS:
+            markdown = (DOCS_DIR / relative_path).read_text(encoding="utf-8")
+            with self.subTest(relative_path=relative_path):
+                self.assertNotIn("这篇笔记解决什么问题", markdown)
 
 
 class MarkdownCodeFenceTests(unittest.TestCase):
@@ -273,6 +319,20 @@ class HomepageTests(unittest.TestCase):
         for color in ("#FFFFFF", "#8E5F68", "#B98991", "#F4E8EA", "#FAF5F6"):
             with self.subTest(color=color):
                 self.assertIn(color, self.styles)
+
+    def test_secondary_surfaces_use_neutral_gray_instead_of_pale_pink(self):
+        """Large secondary surfaces should not tint the whole page pink."""
+        self.assertIn("--BG-SOFT: #F7F7F6", self.styles)
+        self.assertIn("--ACCENT-MIST: #F7F7F6", self.styles)
+
+    def test_every_entry_point_uses_the_single_letter_brand_mark(self):
+        """Homepage and note entry points must present the same compact identity."""
+        pages = ("index.html", "note.html", "llm/ppo.html", "llm/grpo.html", "llm/concepts.html")
+        for page in pages:
+            parser = BrandMarkParser()
+            parser.feed((DOCS_DIR / page).read_text(encoding="utf-8"))
+            with self.subTest(page=page):
+                self.assertEqual(parser.marks, ["Z"])
 
     def test_site_is_light_only(self):
         """Theme controls or dark-mode state would violate the single-theme design."""
