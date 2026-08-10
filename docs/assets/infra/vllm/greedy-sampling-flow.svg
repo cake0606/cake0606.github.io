@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
   <title id="title">vLLM Greedy Sampling 流程</title>
-  <desc id="desc">SamplingParams 根据 temperature 与 _SAMPLING_EPS 选择 GREEDY 或随机采样。Batch metadata 再根据 all_greedy、all_random 或 mixed batch 选择 argmax、top-k / top-p 随机采样，或通过 torch.where 合并结果。</desc>
+  <desc id="desc">SamplingParams 先检查 0 &lt; temperature &lt; _MAX_TEMP，并 clamp to 0.01；_verify_args 拒绝负温度后，才通过 temperature 与 _SAMPLING_EPS 选择 GREEDY、RANDOM_SEED 或 RANDOM。Batch metadata 再根据 all_greedy、all_random 或 mixed batch 选择 argmax、top-k / top-p 随机采样，或以 temperature mask 通过 torch.where 合并 greedy_sampled 与 random_sampled。</desc>
   <defs>
     <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L9,4.5 L0,9 Z" fill="#8e5f68" />
@@ -10,90 +10,111 @@
       .accent { fill: #f4e8ea; stroke: #b98991; stroke-width: 2; }
       .paper { fill: #fff; stroke: #b98991; stroke-width: 2; }
       .edge { fill: none; stroke: #8e5f68; stroke-width: 2; marker-end: url(#arrow); }
-      .label { fill: #3f3638; font: 600 17px Inter, "Noto Sans SC", sans-serif; text-anchor: middle; }
-      .small { fill: #675b5e; font: 14px Inter, "Noto Sans SC", sans-serif; text-anchor: middle; }
-      .edge-label { fill: #8e5f68; font: 600 13px Inter, sans-serif; }
-      .lane { fill: #8e5f68; font: 700 13px Inter, sans-serif; letter-spacing: 1px; text-transform: uppercase; }
+      .label { fill: #3f3638; font: 600 16px Inter, "Noto Sans SC", sans-serif; text-anchor: middle; }
+      .small { fill: #675b5e; font: 13px Inter, "Noto Sans SC", sans-serif; text-anchor: middle; }
+      .edge-label { fill: #8e5f68; font: 600 12px Inter, sans-serif; }
+      .lane { fill: #8e5f68; font: 700 13px Inter, sans-serif; letter-spacing: 1px; }
     </style>
   </defs>
   <rect width="1200" height="700" fill="#fff" />
 
-  <text x="50" y="28" class="lane">PARAMETER ROUTING</text>
-  <rect x="50" y="48" width="190" height="62" rx="16" class="node" />
-  <text x="145" y="75" class="label">SamplingParams</text>
-  <text x="145" y="96" class="small">temperature / seed</text>
+  <text x="35" y="24" class="lane">PARAMETER NORMALIZATION</text>
+  <rect x="35" y="44" width="170" height="58" rx="15" class="node" />
+  <text x="120" y="68" class="label">SamplingParams</text>
+  <text x="120" y="88" class="small">raw temperature / seed</text>
 
-  <path d="M365 45 L475 79 L365 113 L255 79 Z" class="accent" />
-  <text x="365" y="73" class="label">temperature &lt;</text>
-  <text x="365" y="95" class="small">_SAMPLING_EPS ?</text>
+  <path d="M245 28 L350 73 L245 118 L140 73 Z" class="accent" transform="translate(105 0)" />
+  <text x="350" y="67" class="label">0 &lt; temperature &lt;</text>
+  <text x="350" y="88" class="small">_MAX_TEMP ?</text>
 
-  <rect x="555" y="31" width="215" height="62" rx="16" class="accent" />
-  <text x="662" y="58" class="label">GREEDY</text>
-  <text x="662" y="79" class="small">normalize top-k / top-p</text>
+  <rect x="505" y="17" width="180" height="58" rx="15" class="accent" />
+  <text x="595" y="42" class="label">clamp to 0.01</text>
+  <text x="595" y="62" class="small">temperature = _MAX_TEMP</text>
 
-  <path d="M662 116 L765 151 L662 186 L559 151 Z" class="node" />
-  <text x="662" y="157" class="label">seed is set ?</text>
+  <rect x="505" y="101" width="180" height="58" rx="15" class="node" />
+  <text x="595" y="126" class="label">_verify_args</text>
+  <text x="595" y="146" class="small">temperature &lt; 0 → error</text>
 
-  <rect x="860" y="102" width="180" height="48" rx="14" class="node" />
-  <text x="950" y="132" class="label">RANDOM_SEED</text>
-  <rect x="860" y="165" width="180" height="48" rx="14" class="node" />
-  <text x="950" y="195" class="label">RANDOM</text>
+  <path d="M800 85 L900 126 L800 167 L700 126 Z" class="accent" />
+  <text x="800" y="120" class="label">temperature &lt;</text>
+  <text x="800" y="141" class="small">_SAMPLING_EPS ?</text>
 
-  <path d="M240 79 H255" class="edge" />
-  <path d="M475 79 H555" class="edge" />
-  <text x="508" y="68" class="edge-label">yes</text>
-  <path d="M365 113 V151 H559" class="edge" />
-  <text x="420" y="143" class="edge-label">no</text>
-  <path d="M765 141 H820 V126 H860" class="edge" />
-  <text x="797" y="130" class="edge-label">yes</text>
-  <path d="M765 161 H820 V189 H860" class="edge" />
-  <text x="797" y="181" class="edge-label">no</text>
+  <rect x="965" y="66" width="200" height="58" rx="15" class="accent" />
+  <text x="1065" y="91" class="label">GREEDY</text>
+  <text x="1065" y="111" class="small">normalize top-k / top-p</text>
 
-  <rect x="470" y="236" width="260" height="66" rx="17" class="paper" />
-  <text x="600" y="264" class="label">Batch metadata</text>
-  <text x="600" y="286" class="small">all_greedy / all_random</text>
-  <path d="M662 93 V220 H600 V236" class="edge" />
-  <path d="M950 150 V218 H640 V236" class="edge" />
-  <path d="M950 213 V225 H680 V236" class="edge" />
+  <path d="M800 178 L890 212 L800 246 L710 212 Z" class="node" />
+  <text x="800" y="218" class="label">seed is set ?</text>
+  <rect x="965" y="153" width="200" height="44" rx="13" class="node" />
+  <text x="1065" y="181" class="label">RANDOM_SEED</text>
+  <rect x="965" y="216" width="200" height="44" rx="13" class="node" />
+  <text x="1065" y="244" class="label">RANDOM</text>
 
-  <line x1="50" y1="330" x2="1150" y2="330" stroke="#e8dddf" stroke-width="2" />
-  <text x="50" y="356" class="lane">BATCH EXECUTION</text>
+  <path d="M205 73 H245" class="edge" />
+  <path d="M455 61 H505" class="edge" />
+  <text x="472" y="52" class="edge-label">yes</text>
+  <path d="M350 118 V130 H505" class="edge" />
+  <text x="418" y="123" class="edge-label">no</text>
+  <path d="M595 75 V101" class="edge" />
+  <path d="M685 130 H700" class="edge" />
+  <path d="M900 112 H965" class="edge" />
+  <text x="903" y="102" class="edge-label">yes</text>
+  <path d="M800 167 V178" class="edge" />
+  <text x="810" y="176" class="edge-label">no</text>
+  <path d="M890 202 H930 V175 H965" class="edge" />
+  <text x="906" y="190" class="edge-label">yes</text>
+  <path d="M890 222 H930 V238 H965" class="edge" />
+  <text x="906" y="236" class="edge-label">no</text>
 
-  <rect x="70" y="380" width="220" height="54" rx="15" class="accent" />
-  <text x="180" y="413" class="label">all_greedy</text>
-  <rect x="490" y="380" width="220" height="54" rx="15" class="node" />
-  <text x="600" y="413" class="label">all_random</text>
-  <rect x="910" y="380" width="220" height="54" rx="15" class="node" />
-  <text x="1020" y="413" class="label">mixed batch</text>
+  <rect x="475" y="270" width="250" height="58" rx="16" class="paper" />
+  <text x="600" y="294" class="label">Batch metadata</text>
+  <text x="600" y="315" class="small">all_greedy / all_random</text>
+  <path d="M1065 124 V258 H640 V270" class="edge" />
+  <path d="M1065 197 V250 H610 V270" class="edge" />
+  <path d="M1065 260 H580 V270" class="edge" />
 
-  <path d="M600 302 V342 H180 V380" class="edge" />
-  <path d="M600 302 V380" class="edge" />
-  <path d="M600 342 H1020 V380" class="edge" />
+  <line x1="35" y1="350" x2="1165" y2="350" stroke="#e8dddf" stroke-width="2" />
+  <text x="35" y="373" class="lane">BATCH EXECUTION</text>
 
-  <rect x="70" y="482" width="220" height="58" rx="15" class="paper" />
-  <text x="180" y="517" class="label">argmax</text>
+  <rect x="60" y="390" width="210" height="50" rx="14" class="accent" />
+  <text x="165" y="421" class="label">all_greedy</text>
+  <rect x="490" y="390" width="220" height="50" rx="14" class="node" />
+  <text x="600" y="421" class="label">all_random</text>
+  <rect x="920" y="390" width="220" height="50" rx="14" class="node" />
+  <text x="1030" y="421" class="label">mixed batch</text>
+  <path d="M600 328 V365 H165 V390" class="edge" />
+  <path d="M600 328 V390" class="edge" />
+  <path d="M600 365 H1030 V390" class="edge" />
 
-  <rect x="485" y="465" width="230" height="92" rx="15" class="paper" />
-  <text x="600" y="490" class="small">temperature → processors</text>
+  <rect x="60" y="480" width="210" height="52" rx="14" class="paper" />
+  <text x="165" y="512" class="label">argmax</text>
+  <path d="M165 440 V480" class="edge" />
+
+  <rect x="480" y="468" width="240" height="82" rx="14" class="paper" />
+  <text x="600" y="491" class="small">temperature → processors</text>
   <text x="600" y="516" class="label">top-k / top-p</text>
-  <text x="600" y="541" class="small">random sample</text>
+  <text x="600" y="538" class="small">random_sampled</text>
+  <path d="M600 440 V468" class="edge" />
 
-  <rect x="895" y="460" width="250" height="102" rx="15" class="paper" />
-  <text x="1020" y="485" class="small">argmax + safe temperature</text>
-  <text x="1020" y="512" class="label">top-k / top-p</text>
-  <text x="1020" y="538" class="small">random sample</text>
+  <rect x="790" y="472" width="170" height="66" rx="14" class="paper" />
+  <text x="875" y="497" class="small">greedy_sampled</text>
+  <text x="875" y="520" class="label">argmax</text>
+  <rect x="1000" y="462" width="175" height="86" rx="14" class="paper" />
+  <text x="1088" y="486" class="small">safe temperature</text>
+  <text x="1088" y="510" class="label">top-k / top-p</text>
+  <text x="1088" y="534" class="small">random_sampled</text>
+  <path d="M1030 440 V454 H875 V472" class="edge" />
+  <path d="M1030 440 V462" class="edge" />
 
-  <path d="M180 434 V482" class="edge" />
-  <path d="M600 434 V465" class="edge" />
-  <path d="M1020 434 V460" class="edge" />
+  <rect x="900" y="590" width="210" height="58" rx="15" class="accent" />
+  <text x="1005" y="614" class="label">torch.where</text>
+  <text x="1005" y="635" class="small">temperature mask</text>
+  <path d="M875 538 V566 H960 V590" class="edge" />
+  <path d="M1088 548 V566 H1050 V590" class="edge" />
 
-  <rect x="925" y="595" width="190" height="54" rx="15" class="accent" />
-  <text x="1020" y="628" class="label">torch.where</text>
-  <path d="M1020 562 V595" class="edge" />
-
-  <rect x="485" y="625" width="230" height="56" rx="16" fill="#f7f7f6" stroke="#8e5f68" stroke-width="2" />
-  <text x="600" y="660" class="label">sampled token ids</text>
-  <path d="M180 540 V653 H485" class="edge" />
-  <path d="M600 557 V625" class="edge" />
-  <path d="M925 622 H760 V653 H715" class="edge" />
+  <rect x="490" y="628" width="220" height="50" rx="15" fill="#f7f7f6" stroke="#8e5f68" stroke-width="2" />
+  <text x="600" y="659" class="label">sampled token ids</text>
+  <path d="M165 532 V653 H490" class="edge" />
+  <path d="M600 550 V628" class="edge" />
+  <path d="M900 619 H760 V653 H710" class="edge" />
 </svg>

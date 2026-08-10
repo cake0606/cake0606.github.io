@@ -4,7 +4,7 @@
 
 `ModelRunner.__init__` 先初始化 NCCL 进程组与当前 CUDA 设备，再加载模型。模型加载后依次调用 `warmup_model()`、`allocate_kv_cache()`；未启用 `enforce_eager` 时，还会调用 `capture_cudagraph()`。
 
-## warmup_model
+## `warmup_model`
 
 `warmup_model()` 构造受 `max_num_batched_tokens`、`max_model_len` 和 `max_num_seqs` 限制的最大规模假 prefill：
 
@@ -32,7 +32,7 @@ def warmup_model(self):
    - 通信库与 Attention backend 的懒初始化。
 2. 记录更接近真实峰值的显存占用，避免高估可分配给 KV Cache 的空间。PyTorch 的 CUDA allocator 会在内存统计中保留历史分配峰值。
 
-## allocate_kv_cache
+## `allocate_kv_cache`
 
 `allocate_kv_cache()` 先根据显存预算计算可分配的物理块数量：
 
@@ -75,7 +75,7 @@ for module in self.model.modules():
 
 每层缓存的形状是 `[num_kv_cache_blocks, block_size, num_kv_heads, head_dim]`。其中，一个物理块对应一页，块内 token 偏移对应页内地址。
 
-## capture_cudagraph
+## `capture_cudagraph`
 
 `capture_cudagraph()` 先准备一组最大容量的静态缓冲区：
 
@@ -98,7 +98,7 @@ CUDA Graph capture 要求 capture 时使用的张量地址稳定。replay 时只
 
 Prefill 与 decode 的输入形态不同。`Context` 用于在模型执行前注入本轮 batch 的 KV Cache 写入位置、历史上下文布局，以及 prefill 或 decode 所需的元数据。
 
-### run
+### `run`
 
 `run()` 一次处理一批 `Sequence`：
 
@@ -122,7 +122,7 @@ def run(self, seqs, is_prefill):
     return token_ids
 ```
 
-### prepare_prefill
+### `prepare_prefill`
 
 `prepare_prefill()` 只把本轮需要计算的 token 加入 `input_ids`，并记录它们在原序列中的绝对位置：
 
@@ -172,7 +172,7 @@ for i in range(start_block, end_block):
     slot_mapping.extend(range(slot_start, slot_end))
 ```
 
-### prepare_decode
+### `prepare_decode`
 
 `prepare_decode()` 处理上一轮采样得到的新 token，为本轮 forward 写入该 token 的 KV 提前准备地址：
 

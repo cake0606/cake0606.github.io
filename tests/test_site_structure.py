@@ -397,6 +397,16 @@ class ViewerIntegrationTests(unittest.TestCase):
                 self.assertEqual(parser.note_path, expected_note_path)
                 self.assertTrue((DOCS_DIR / parser.note_path).is_file())
 
+    def test_compatibility_pages_do_not_embed_stale_markdown_copies(self):
+        """Legacy URLs must render the canonical Markdown instead of a second copy."""
+        for page in ("llm/ppo.html", "llm/grpo.html", "llm/concepts.html"):
+            with self.subTest(page=page):
+                html = (DOCS_DIR / page).read_text(encoding="utf-8")
+                self.assertNotIn('id="embedded-markdown"', html)
+
+        note_runtime = (DOCS_DIR / "note.js").read_text(encoding="utf-8")
+        self.assertNotIn("embeddedMarkdown", note_runtime)
+
     def test_viewer_assets_are_versioned_to_prevent_stale_navigation(self):
         """Viewer HTML, scripts, and styles must update as one deployable unit."""
         for page in ("note.html", "llm/ppo.html", "llm/grpo.html", "llm/concepts.html"):
@@ -406,7 +416,7 @@ class ViewerIntegrationTests(unittest.TestCase):
                 for asset in parser.local_assets:
                     self.assertEqual(
                         parse_qs(urlparse(asset).query).get("v"),
-                        ["20260810-5"],
+                        ["20260810-6"],
                         asset,
                     )
 
@@ -547,6 +557,8 @@ class InfraNotePilotTests(unittest.TestCase):
         svg_text = " ".join(svg_root.itertext())
         for label in (
             "temperature",
+            "_MAX_TEMP",
+            "clamp to 0.01",
             "_SAMPLING_EPS",
             "GREEDY",
             "all_greedy",
@@ -563,11 +575,12 @@ class InfraNotePilotTests(unittest.TestCase):
         self.assertTrue(markdown.startswith("# vLLM Sampling\n"))
         self.assertIn("## Sampling 解决的问题", markdown)
         self.assertIn(
-            "![vLLM Greedy Sampling 流程](../../assets/infra/vllm/greedy-sampling-flow.svg?v=20260810-2)",
+            "![vLLM Greedy Sampling 流程](../../assets/infra/vllm/greedy-sampling-flow.svg?v=20260810-3)",
             markdown,
         )
         for identifier in (
             "`temperature`",
+            "`_MAX_TEMP`",
             "`_SAMPLING_EPS`",
             "`SamplingType.GREEDY`",
             "`all_greedy`",
@@ -575,6 +588,14 @@ class InfraNotePilotTests(unittest.TestCase):
             "`torch.where`",
         ):
             self.assertIn(identifier, markdown)
+
+        self.assertIn("原始输入 `temperature = 0`", markdown)
+        self.assertIn("原始输入 `1e-6` 不会进入 Greedy", markdown)
+        normalization_start = markdown.index("0 < self.temperature < _MAX_TEMP")
+        self.assertLess(
+            normalization_start,
+            markdown.index("if self.temperature < _SAMPLING_EPS", normalization_start),
+        )
 
 
 if __name__ == "__main__":

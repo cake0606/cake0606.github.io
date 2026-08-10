@@ -4,69 +4,46 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="params" value="SamplingParams&#xa;temperature / seed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="60" y="40" width="210" height="64" as="geometry" />
-        </mxCell>
-        <mxCell id="eps" value="temperature &amp;lt;&#xa;_SAMPLING_EPS ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f4e8ea;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="330" y="30" width="220" height="84" as="geometry" />
-        </mxCell>
-        <mxCell id="greedy" value="GREEDY&#xa;normalize top-k / top-p" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4e8ea;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="640" y="15" width="220" height="64" as="geometry" />
-        </mxCell>
-        <mxCell id="seed" value="seed is set ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="640" y="105" width="220" height="80" as="geometry" />
-        </mxCell>
-        <mxCell id="random-seed" value="RANDOM_SEED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;" vertex="1" parent="1">
-          <mxGeometry x="940" y="90" width="180" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="random" value="RANDOM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;" vertex="1" parent="1">
-          <mxGeometry x="940" y="155" width="180" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="metadata" value="Batch metadata&#xa;all_greedy / all_random" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="475" y="240" width="250" height="64" as="geometry" />
-        </mxCell>
-        <mxCell id="all-greedy" value="all_greedy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4e8ea;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="95" y="355" width="190" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="all-random" value="all_random" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="505" y="355" width="190" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="mixed" value="mixed batch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="915" y="355" width="190" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="argmax" value="argmax" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b98991;fontColor=#3f3638;" vertex="1" parent="1">
-          <mxGeometry x="95" y="455" width="190" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="random-pipeline" value="temperature&#xa;processors&#xa;top-k / top-p&#xa;random sample" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b98991;fontColor=#3f3638;" vertex="1" parent="1">
-          <mxGeometry x="500" y="435" width="200" height="94" as="geometry" />
-        </mxCell>
-        <mxCell id="mixed-pipeline" value="argmax + safe temperature&#xa;processors + top-k / top-p&#xa;random sample" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b98991;fontColor=#3f3638;" vertex="1" parent="1">
-          <mxGeometry x="900" y="435" width="220" height="94" as="geometry" />
-        </mxCell>
-        <mxCell id="where" value="torch.where" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4e8ea;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="915" y="565" width="190" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="output" value="sampled token ids" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#8e5f68;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="505" y="620" width="190" height="52" as="geometry" />
-        </mxCell>
-        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#8e5f68;" edge="1" parent="1" source="params" target="eps"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e2" value="yes" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;fontColor=#8e5f68;" edge="1" parent="1" source="eps" target="greedy"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e3" value="no" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;fontColor=#8e5f68;" edge="1" parent="1" source="eps" target="seed"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e4" value="yes" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;fontColor=#8e5f68;" edge="1" parent="1" source="seed" target="random-seed"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e5" value="no" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;fontColor=#8e5f68;" edge="1" parent="1" source="seed" target="random"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="greedy" target="metadata"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="random-seed" target="metadata"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="random" target="metadata"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="metadata" target="all-greedy"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="metadata" target="all-random"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="metadata" target="mixed"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="all-greedy" target="argmax"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="all-random" target="random-pipeline"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="mixed" target="mixed-pipeline"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="mixed-pipeline" target="where"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="argmax" target="output"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="random-pipeline" target="output"><mxGeometry relative="1" as="geometry" /></mxCell>
-        <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="where" target="output"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="params" value="SamplingParams&#xa;raw temperature / seed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="30" y="45" width="180" height="60" as="geometry" /></mxCell>
+        <mxCell id="clamp-check" value="0 &amp;lt; temperature &amp;lt;&#xa;_MAX_TEMP ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f4e8ea;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="250" y="25" width="220" height="90" as="geometry" /></mxCell>
+        <mxCell id="clamp" value="clamp to 0.01&#xa;temperature = _MAX_TEMP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4e8ea;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="510" y="15" width="190" height="62" as="geometry" /></mxCell>
+        <mxCell id="verify" value="_verify_args&#xa;temperature &amp;lt; 0 → error" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;" vertex="1" parent="1"><mxGeometry x="510" y="105" width="190" height="62" as="geometry" /></mxCell>
+        <mxCell id="eps" value="temperature &amp;lt;&#xa;_SAMPLING_EPS ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f4e8ea;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="750" y="85" width="210" height="84" as="geometry" /></mxCell>
+        <mxCell id="greedy" value="GREEDY&#xa;normalize top-k / top-p" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4e8ea;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1000" y="55" width="170" height="62" as="geometry" /></mxCell>
+        <mxCell id="seed" value="seed is set ?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="750" y="185" width="210" height="76" as="geometry" /></mxCell>
+        <mxCell id="random-seed" value="RANDOM_SEED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;" vertex="1" parent="1"><mxGeometry x="1000" y="155" width="170" height="46" as="geometry" /></mxCell>
+        <mxCell id="random" value="RANDOM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;" vertex="1" parent="1"><mxGeometry x="1000" y="220" width="170" height="46" as="geometry" /></mxCell>
+        <mxCell id="metadata" value="Batch metadata&#xa;all_greedy / all_random" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="475" y="285" width="250" height="60" as="geometry" /></mxCell>
+        <mxCell id="all-greedy" value="all_greedy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4e8ea;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="75" y="390" width="200" height="50" as="geometry" /></mxCell>
+        <mxCell id="all-random" value="all_random" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="500" y="390" width="200" height="50" as="geometry" /></mxCell>
+        <mxCell id="mixed" value="mixed batch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="925" y="390" width="200" height="50" as="geometry" /></mxCell>
+        <mxCell id="argmax" value="argmax" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b98991;fontColor=#3f3638;" vertex="1" parent="1"><mxGeometry x="75" y="485" width="200" height="50" as="geometry" /></mxCell>
+        <mxCell id="random-pipeline" value="temperature → processors&#xa;top-k / top-p&#xa;random_sampled" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b98991;fontColor=#3f3638;" vertex="1" parent="1"><mxGeometry x="490" y="470" width="220" height="82" as="geometry" /></mxCell>
+        <mxCell id="mixed-pipeline" value="greedy_sampled = argmax&#xa;safe temperature + top-k / top-p&#xa;random_sampled" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b98991;fontColor=#3f3638;" vertex="1" parent="1"><mxGeometry x="905" y="465" width="240" height="92" as="geometry" /></mxCell>
+        <mxCell id="where" value="torch.where&#xa;temperature mask" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4e8ea;strokeColor=#b98991;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="930" y="590" width="190" height="54" as="geometry" /></mxCell>
+        <mxCell id="output" value="sampled token ids" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f7f7f6;strokeColor=#8e5f68;fontColor=#3f3638;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="505" y="625" width="190" height="50" as="geometry" /></mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="params" target="clamp-check"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" value="yes" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;fontColor=#8e5f68;" edge="1" parent="1" source="clamp-check" target="clamp"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" value="no" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;fontColor=#8e5f68;" edge="1" parent="1" source="clamp-check" target="verify"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="clamp" target="verify"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="verify" target="eps"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" value="yes" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;fontColor=#8e5f68;" edge="1" parent="1" source="eps" target="greedy"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" value="no" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;fontColor=#8e5f68;" edge="1" parent="1" source="eps" target="seed"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" value="yes" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;fontColor=#8e5f68;" edge="1" parent="1" source="seed" target="random-seed"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" value="no" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;fontColor=#8e5f68;" edge="1" parent="1" source="seed" target="random"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="greedy" target="metadata"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="random-seed" target="metadata"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="random" target="metadata"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="metadata" target="all-greedy"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="metadata" target="all-random"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="metadata" target="mixed"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="all-greedy" target="argmax"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="all-random" target="random-pipeline"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="mixed" target="mixed-pipeline"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e19" value="greedy_sampled + random_sampled" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;fontColor=#8e5f68;" edge="1" parent="1" source="mixed-pipeline" target="where"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e20" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="argmax" target="output"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e21" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="random-pipeline" target="output"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e22" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;strokeColor=#8e5f68;" edge="1" parent="1" source="where" target="output"><mxGeometry relative="1" as="geometry" /></mxCell>
       </root>
     </mxGraphModel>
   </diagram>

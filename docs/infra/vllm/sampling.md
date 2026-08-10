@@ -11,7 +11,7 @@
 
 ## Greedy Sampling 判定
 
-`SamplingParams.sampling_type` 用 `temperature` 与 `_SAMPLING_EPS` 判断采样类型：
+`SamplingParams.sampling_type` 最终仍用 `temperature` 与 `_SAMPLING_EPS` 判断采样类型，但这里读到的是 `SamplingParams.__post_init__` 归一化后的字段，而不是未经处理的用户输入：
 
 ```python
 @cached_property
@@ -30,15 +30,14 @@ _SAMPLING_EPS = 1e-5
 _MAX_TEMP = 1e-2
 ```
 
-由此可以得到三个温度区间：
-
-1. `temperature < 1e-5`：判定为 `SamplingType.GREEDY`。
-2. `1e-5 <= temperature < 1e-2`：仍属于随机采样，但会被抬高到 `_MAX_TEMP`，避免过小温度引起数值问题。
-3. `temperature >= 1e-2`：使用用户给定温度进行随机采样。
-
-Greedy 的判断不用严格的 `temperature == 0`，是为了给浮点输入留出稳定边界。进入 Greedy 分支后，`SamplingParams.__post_init__` 还会关闭只对随机截断有意义的参数：
+关键在于两个判断的执行顺序。`__post_init__` 先抬高过小的正温度，完成参数校验后，才执行 Greedy 归一化：
 
 ```python
+if 0 < self.temperature < _MAX_TEMP:
+    self.temperature = max(self.temperature, _MAX_TEMP)
+
+self._verify_args()
+
 if self.temperature < _SAMPLING_EPS:
     self.top_p = 1.0
     self.top_k = 0
@@ -46,13 +45,20 @@ if self.temperature < _SAMPLING_EPS:
     self._verify_greedy_sampling()
 ```
 
-这里 `top_p = 1.0`、`top_k = 0` 和 `min_p = 0.0` 都表示不截断候选 token；`_verify_greedy_sampling()` 则要求 Greedy 请求的 `n` 必须为 `1`。
+因此，按用户的原始输入划分，行为是：
+
+1. 原始输入 `temperature < 0`：在 `_verify_args()` 中被拒绝。
+2. 原始输入 `temperature = 0`：不会触发 `_MAX_TEMP` 钳位，随后满足 `_SAMPLING_EPS` 条件，进入 `SamplingType.GREEDY`。
+3. 原始输入 `0 < temperature < 0.01`：先被钳位到 `_MAX_TEMP = 0.01`，随后进入随机采样。也就是说，原始输入 `1e-6` 不会进入 Greedy。
+4. 原始输入 `temperature >= 0.01`：保留给定温度并进入随机采样。
+
+进入 Greedy 分支后，`top_p = 1.0`、`top_k = 0` 和 `min_p = 0.0` 都表示不截断候选 token；`_verify_greedy_sampling()` 还要求请求的 `n` 必须为 `1`。
 
 ## Greedy Sampling 流程
 
-下面的流程图把参数判定与 batch 内的实际执行路径连在一起。图中的三条 batch 路径并不是三套独立调度器，而是 `Sampler.sample()` 根据 `all_greedy` 和 `all_random` 选择的快路径。
+下面的流程图先展示 `_MAX_TEMP` 钳位，再展示 `_SAMPLING_EPS` 判定，最后连接 batch 内的实际执行路径。图中的三条 batch 路径并不是三套独立调度器，而是 `Sampler.sample()` 根据 `all_greedy` 和 `all_random` 选择的快路径。
 
-![vLLM Greedy Sampling 流程](../../assets/infra/vllm/greedy-sampling-flow.svg?v=20260810-2)
+![vLLM Greedy Sampling 流程](../../assets/infra/vllm/greedy-sampling-flow.svg?v=20260810-3)
 
 ## Batch 聚合
 
@@ -148,7 +154,8 @@ logits_sort.masked_fill_(top_p_mask, -float("inf"))
 
 ## 关键结论
 
-- `temperature < _SAMPLING_EPS` 才是源码层面的 Greedy 判定条件。
+- 对合法的用户原始输入，`temperature = 0` 才会进入 Greedy；过小的正温度会先被 `_MAX_TEMP` 抬到 `0.01`。
+- `sampling_type` 仍以归一化后的 `temperature < _SAMPLING_EPS` 作为内部判定条件。
 - Greedy 参数会被归一化，`top_k`、`top_p` 和 `min_p` 不再影响候选集合。
 - `all_greedy` 直接 `argmax` 并提前返回；`all_random` 不计算 Greedy 结果。
 - 混合 batch 通过安全温度和 `torch.where` 共用向量化计算，同时保证每行采用正确策略。

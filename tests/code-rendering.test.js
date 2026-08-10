@@ -45,12 +45,18 @@ test("removes only the indentation shared by every non-empty code line", () => {
   );
   assert.equal(
     dedentCode("\n\t\tif ready:\n\t\t\trun()\n\n"),
-    "\nif ready:\n\trun()\n\n"
+    "\nif ready:\n  run()\n\n"
+  );
+  assert.equal(
+    dedentCode("\tfoo\n  bar\n\t  baz\n"),
+    "foo\nbar\n  baz\n"
   );
   assert.equal(
     dedentCode("value = 1\n    nested = 2\n"),
     "value = 1\n    nested = 2\n"
   );
+  assert.equal(dedentCode(""), "");
+  assert.equal(dedentCode("  \n\t\n"), "\n\n");
 });
 
 test("normalizes Python, CUDA, Bash, and text identifiers", () => {
@@ -90,14 +96,16 @@ test("falls back to a readable label without guessing an unknown highlighter", (
 });
 
 test("decorates and highlights a supported alias", () => {
-  const block = createBlock(["language-cuda"]);
+  const block = createBlock(["language-cuda"], "    value = 1\n");
   const highlighted = [];
+  const highlightedSource = [];
   const highlighter = {
     getLanguage(language) {
       return language === "cpp";
     },
     highlightElement(element) {
       highlighted.push(element);
+      highlightedSource.push(element.textContent);
     }
   };
 
@@ -110,6 +118,7 @@ test("decorates and highlights a supported alias", () => {
   assert.equal(block.classList.contains("language-cpp"), true);
   assert.equal(block.classList.contains("hljs"), true);
   assert.deepEqual(highlighted, [block]);
+  assert.deepEqual(highlightedSource, ["value = 1\n"]);
 });
 
 test("keeps plain and unavailable languages readable without throwing", () => {

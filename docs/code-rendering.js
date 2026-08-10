@@ -62,20 +62,36 @@
   function dedentCode(source = "") {
     const text = String(source);
     const lines = text.split("\n");
-    const indents = lines
+    const tabSize = 2;
+    const normalizedLines = lines.map((line) => {
+      if (line.trim().length === 0) {
+        return "";
+      }
+
+      const leadingWhitespace = line.match(/^[\t ]*/)[0];
+      let columns = 0;
+      for (const character of leadingWhitespace) {
+        columns += character === "\t"
+          ? tabSize - (columns % tabSize)
+          : 1;
+      }
+
+      return `${" ".repeat(columns)}${line.slice(leadingWhitespace.length)}`;
+    });
+    const indents = normalizedLines
       .filter((line) => line.trim().length > 0)
-      .map((line) => line.match(/^[\t ]*/)[0].length);
+      .map((line) => line.match(/^ */)[0].length);
 
     if (indents.length === 0) {
-      return text;
+      return normalizedLines.join("\n");
     }
 
     const sharedIndent = Math.min(...indents);
     if (sharedIndent === 0) {
-      return text;
+      return normalizedLines.join("\n");
     }
 
-    return lines
+    return normalizedLines
       .map((line) => line.trim().length > 0 ? line.slice(sharedIndent) : line)
       .join("\n");
   }

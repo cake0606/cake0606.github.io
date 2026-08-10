@@ -9,7 +9,6 @@ const noteContent = document.getElementById("note-content");
 const tocNav = document.getElementById("toc-nav");
 const notesNav = document.getElementById("notes-nav");
 const header = document.querySelector(".site-header");
-const embeddedMarkdown = document.getElementById("embedded-markdown");
 const sidebarSectionTitle = document.querySelector(".sidebar-section-title");
 const notePaths = globalThis.NotePaths;
 const codeRendering = globalThis.CodeRendering;
@@ -476,13 +475,8 @@ async function loadNote() {
     const rawMarkdown = await response.text();
     renderMarkdown(rawMarkdown, path);
   } catch (error) {
-    if (embeddedMarkdown) {
-      renderMarkdown(embeddedMarkdown.textContent, path);
-      return;
-    }
-
     const detail = window.location.protocol === "file:"
-      ? `${error.message}. Local file previews cannot fetch Markdown. Open a note page with embedded content or run a local web server.`
+      ? `${error.message}. Local file previews cannot fetch canonical Markdown; run a local web server instead.`
       : error.message;
     showNoteError("Unable to load note", detail);
   }

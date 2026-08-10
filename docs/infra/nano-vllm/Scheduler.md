@@ -28,7 +28,7 @@
 | `may_append(seq)` | 在跨块时分配新块 | 请求进入 decode batch 前 |
 | `deallocate(seq)` | 减少序列所引用块的 `ref_count`，计数归零时回收块 | 序列结束或被 `preempt` 时 |
 
-## schedule
+## `schedule`
 
 ### Prefill 阶段
 
@@ -65,7 +65,7 @@ if remaining < num_tokens and scheduled_seqs:  # only allow chunked prefill for 
 
 被抢占的请求会由 `preempt(seq)` 重置为 `WAITING`，释放其 KV Cache 块，并回到 `waiting` 队首。
 
-## postprocess
+## `postprocess`
 
 `postprocess` 对本轮执行过的每个 `seq` 依次完成以下工作：
 
