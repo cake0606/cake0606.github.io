@@ -683,18 +683,17 @@ class InfraNotePilotTests(unittest.TestCase):
         edge_cells = [cell for cell in cells if cell.attrib.get("edge") == "1"]
         drawio_nodes = {cell.attrib["id"] for cell in node_cells}
         drawio_edges = {
-            (cell.attrib["source"], cell.attrib["target"])
+            cell.attrib["id"]: (cell.attrib["source"], cell.attrib["target"])
             for cell in edge_cells
         }
         svg_edges = {
-            (edge.attrib["data-source"], edge.attrib["data-target"])
-            for edge in edges.values()
+            edge_id: (edge.attrib["data-source"], edge.attrib["data-target"])
+            for edge_id, edge in edges.items()
         }
 
         self.assertEqual(len(node_cells), len(drawio_nodes))
         self.assertEqual(len(edge_cells), len(drawio_edges))
         self.assertEqual(set(nodes), drawio_nodes)
-        self.assertEqual(len(svg_edges), len(edges))
         self.assertEqual(svg_edges, drawio_edges)
 
     def test_greedy_sampling_connectors_clear_nodes_and_each_other(self):
