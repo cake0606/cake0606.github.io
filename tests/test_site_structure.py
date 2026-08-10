@@ -316,7 +316,7 @@ class HomepageTests(unittest.TestCase):
 
     def test_light_theme_uses_the_approved_white_and_morandi_palette(self):
         """Replacing the approved light palette with the old teal palette must fail."""
-        for color in ("#FFFFFF", "#8E5F68", "#B98991", "#F4E8EA", "#FAF5F6"):
+        for color in ("#FFFFFF", "#8E5F68", "#B98991", "#F4E8EA", "#F7F7F6"):
             with self.subTest(color=color):
                 self.assertIn(color, self.styles)
 
@@ -351,7 +351,7 @@ class HomepageTests(unittest.TestCase):
         self.assertTrue(self.parser.local_assets)
         for asset in self.parser.local_assets:
             with self.subTest(asset=asset):
-                self.assertEqual(parse_qs(urlparse(asset).query).get("v"), ["20260810-2"], asset)
+                self.assertEqual(parse_qs(urlparse(asset).query).get("v"), ["20260810-3"], asset)
 
 
 class ViewerIntegrationTests(unittest.TestCase):
@@ -406,7 +406,7 @@ class ViewerIntegrationTests(unittest.TestCase):
                 for asset in parser.local_assets:
                     self.assertEqual(
                         parse_qs(urlparse(asset).query).get("v"),
-                        ["20260810-4"],
+                        ["20260810-5"],
                         asset,
                     )
 

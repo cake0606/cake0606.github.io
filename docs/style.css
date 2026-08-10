@@ -2,7 +2,7 @@
   color-scheme: light;
   --bg: #ffffff;
   --bg-elevated: #ffffff;
-  --bg-soft: #faf5f6;
+  --bg-soft: #f7f7f6;
   --surface: #ffffff;
   --surface-strong: #ffffff;
   --border: #e8dddf;
@@ -12,7 +12,7 @@
   --accent: #8e5f68;
   --accent-soft: #b98991;
   --accent-pale: #f4e8ea;
-  --accent-mist: #faf5f6;
+  --accent-mist: #f7f7f6;
   --shadow: 0 16px 40px rgba(63, 54, 56, 0.07);
   --container: 760px;
   --radius: 16px;
@@ -115,7 +115,7 @@ button {
   place-items: center;
   border: 1px solid var(--accent-soft);
   border-radius: 12px;
-  background: var(--accent-pale);
+  background: var(--surface);
   color: var(--accent);
   font-family: "JetBrains Mono", monospace;
   font-size: 0.82rem;
@@ -282,7 +282,7 @@ button {
 }
 
 .note-directory[open] > summary {
-  background: var(--accent-pale);
+  background: var(--bg-soft);
   color: var(--accent);
 }
 

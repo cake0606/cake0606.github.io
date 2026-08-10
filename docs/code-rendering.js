@@ -59,6 +59,27 @@
     };
   }
 
+  function dedentCode(source = "") {
+    const text = String(source);
+    const lines = text.split("\n");
+    const indents = lines
+      .filter((line) => line.trim().length > 0)
+      .map((line) => line.match(/^[\t ]*/)[0].length);
+
+    if (indents.length === 0) {
+      return text;
+    }
+
+    const sharedIndent = Math.min(...indents);
+    if (sharedIndent === 0) {
+      return text;
+    }
+
+    return lines
+      .map((line) => line.trim().length > 0 ? line.slice(sharedIndent) : line)
+      .join("\n");
+  }
+
   function decorateCodeBlock(block, highlighter) {
     const metadata = resolveLanguage(block?.classList);
     const pre = block?.parentElement;
@@ -66,6 +87,8 @@
     if (!block || !pre) {
       return metadata;
     }
+
+    block.textContent = dedentCode(block.textContent);
 
     pre.dataset.language = metadata.label;
     pre.classList.add("has-language-label");
@@ -94,6 +117,7 @@
   }
 
   const api = Object.freeze({
+    dedentCode,
     decorateCodeBlock,
     resolveLanguage
   });
