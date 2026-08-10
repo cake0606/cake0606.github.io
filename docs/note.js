@@ -12,6 +12,7 @@ const header = document.querySelector(".site-header");
 const embeddedMarkdown = document.getElementById("embedded-markdown");
 const sidebarSectionTitle = document.querySelector(".sidebar-section-title");
 const notePaths = globalThis.NotePaths;
+const codeRendering = globalThis.CodeRendering;
 
 function updateHeaderState() {
   header.classList.toggle("is-scrolled", window.scrollY > 16);
@@ -307,13 +308,16 @@ function normalizeDisplayMath() {
 }
 
 function highlightCodeBlocks() {
-  if (typeof hljs === "undefined") {
-    return;
-  }
-
   noteContent.querySelectorAll("pre code").forEach((block) => {
-    block.classList.add("hljs");
-    hljs.highlightElement(block);
+    if (codeRendering?.decorateCodeBlock) {
+      codeRendering.decorateCodeBlock(
+        block,
+        typeof hljs === "undefined" ? undefined : hljs
+      );
+    } else if (typeof hljs !== "undefined") {
+      block.classList.add("hljs");
+      hljs.highlightElement(block);
+    }
     enhanceCodeHighlight(block);
   });
 }

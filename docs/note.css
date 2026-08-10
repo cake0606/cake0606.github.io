@@ -3,19 +3,9 @@
 }
 
 :root {
-  --code-bg: #11111b;
+  --code-bg: #1e1e2e;
   --code-border: #45475a;
   --code-text: #cdd6f4;
-  --code-comment: #7f849c;
-  --code-mauve: #cba6f7;
-  --code-pink: #f5c2e7;
-  --code-red: #f38ba8;
-  --code-peach: #fab387;
-  --code-yellow: #f9e2af;
-  --code-green: #a6e3a1;
-  --code-teal: #94e2d5;
-  --code-sky: #89dceb;
-  --code-blue: #89b4fa;
 }
 
 .note-page .container,
@@ -356,6 +346,24 @@
   scrollbar-color: #45475a var(--code-bg);
 }
 
+.note-content pre.has-language-label {
+  padding-top: 2.75rem;
+}
+
+.note-content pre::before {
+  position: absolute;
+  top: 0.72rem;
+  left: 1.25rem;
+  content: attr(data-language);
+  color: #a6adc8;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 .note-content code,
 .sidebar-path,
 .note-link-meta {
@@ -385,121 +393,6 @@
 .note-content pre .hljs {
   color: var(--code-text);
   background: transparent;
-}
-
-.note-content pre .hljs-comment,
-.note-content pre .hljs-quote,
-.note-content pre .hljs-meta .hljs-string {
-  color: var(--code-comment);
-  font-style: italic;
-}
-
-.note-content pre .hljs-keyword,
-.note-content pre .hljs-selector-tag,
-.note-content pre .hljs-section,
-.note-content pre .hljs-link,
-.note-content pre .hljs-template-tag {
-  color: var(--code-mauve);
-  font-weight: 600;
-}
-
-.note-content pre .hljs-literal,
-.note-content pre .hljs-code,
-.note-content pre .hljs-selector-attr,
-.note-content pre .hljs-selector-pseudo {
-  color: var(--code-peach);
-}
-
-.note-content pre .hljs-string,
-.note-content pre .hljs-attribute,
-.note-content pre .hljs-symbol,
-.note-content pre .hljs-addition,
-.note-content pre .hljs-template-variable {
-  color: var(--code-green);
-}
-
-.note-content pre .hljs-type,
-.note-content pre .hljs-class .hljs-title,
-.note-content pre .hljs-title.class_,
-.note-content pre .hljs-title.class_.inherited__ {
-  color: var(--code-yellow);
-}
-
-.note-content pre .hljs-number,
-.note-content pre .hljs-regexp,
-.note-content pre .hljs-literal,
-.note-content pre .hljs-operator.word {
-  color: var(--code-peach);
-}
-
-.note-content pre .hljs-meta,
-.note-content pre .hljs-doctag,
-.note-content pre .hljs-meta .hljs-keyword {
-  color: var(--code-pink);
-}
-
-.note-content pre .hljs-built_in,
-.note-content pre .hljs-builtin-name,
-.note-content pre .hljs-title,
-.note-content pre .hljs-title.function_,
-.note-content pre .hljs-function .hljs-title {
-  color: var(--code-blue);
-}
-
-.note-content pre .hljs-params,
-.note-content pre .hljs-property,
-.note-content pre .hljs-attr,
-.note-content pre .hljs-tag .hljs-attr {
-  color: var(--code-teal);
-}
-
-.note-content pre .hljs-variable,
-.note-content pre .hljs-selector-id,
-.note-content pre .hljs-selector-class,
-.note-content pre .hljs-deletion,
-.note-content pre .hljs-tag,
-.note-content pre .hljs-name {
-  color: var(--code-red);
-}
-
-.note-content pre .language-self,
-.note-content pre .hljs-variable.language-self {
-  color: var(--code-red);
-}
-
-.note-content pre .hljs-operator,
-.note-content pre .hljs-punctuation,
-.note-content pre .hljs-subst {
-  color: var(--code-sky);
-}
-
-.note-content pre .hljs-title.class_,
-.note-content pre .hljs-constant,
-.note-content pre .hljs-bullet,
-.note-content pre .hljs-selector-class .hljs-class {
-  color: var(--code-yellow);
-}
-
-.note-content pre .hljs-emphasis {
-  font-style: italic;
-}
-
-.note-content pre .hljs-strong {
-  font-weight: 700;
-}
-
-.note-content pre .hljs-addition,
-.note-content pre .hljs-deletion {
-  display: inline-block;
-  min-width: 100%;
-}
-
-.note-content pre .hljs-addition {
-  background: rgba(166, 227, 161, 0.12);
-}
-
-.note-content pre .hljs-deletion {
-  background: rgba(243, 139, 168, 0.12);
 }
 
 .note-content table {

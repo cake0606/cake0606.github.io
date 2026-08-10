@@ -128,6 +128,7 @@ class ViewerDocumentParser(HTMLParser):
         super().__init__()
         self.script_sources = []
         self.local_assets = []
+        self.stylesheet_sources = []
         self.theme_toggles = []
         self.note_path = None
 
@@ -139,6 +140,7 @@ class ViewerDocumentParser(HTMLParser):
                 self.local_assets.append(attributes["src"])
         if tag == "link" and attributes.get("rel") == "stylesheet":
             href = attributes.get("href", "")
+            self.stylesheet_sources.append(urlparse(href).path)
             if not href.startswith(("http://", "https://")):
                 self.local_assets.append(href)
         if tag == "body":
@@ -240,7 +242,7 @@ class HomepageTests(unittest.TestCase):
         self.assertTrue(self.parser.local_assets)
         for asset in self.parser.local_assets:
             with self.subTest(asset=asset):
-                self.assertTrue(urlparse(asset).query, asset)
+                self.assertEqual(parse_qs(urlparse(asset).query).get("v"), ["20260810-2"], asset)
 
 
 class ViewerIntegrationTests(unittest.TestCase):
@@ -293,7 +295,42 @@ class ViewerIntegrationTests(unittest.TestCase):
                 parser = self.parse_document(page)
                 self.assertTrue(parser.local_assets)
                 for asset in parser.local_assets:
-                    self.assertTrue(urlparse(asset).query, asset)
+                    self.assertEqual(
+                        parse_qs(urlparse(asset).query).get("v"),
+                        ["20260810-2"],
+                        asset,
+                    )
+
+    def test_viewers_load_full_highlighter_code_module_and_catppuccin_theme(self):
+        """Every viewer must load the browser build and local Mocha theme in order."""
+        viewer_expectations = {
+            "note.html": ("code-rendering.js", "vendor/catppuccin-mocha.css"),
+            "llm/ppo.html": ("../code-rendering.js", "../vendor/catppuccin-mocha.css"),
+            "llm/grpo.html": ("../code-rendering.js", "../vendor/catppuccin-mocha.css"),
+            "llm/concepts.html": ("../code-rendering.js", "../vendor/catppuccin-mocha.css"),
+        }
+        full_highlighter = "/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+
+        for page, (code_module, theme_stylesheet) in viewer_expectations.items():
+            with self.subTest(page=page):
+                parser = self.parse_document(page)
+                self.assertIn(full_highlighter, parser.script_sources)
+                self.assertIn(code_module, parser.script_sources)
+                self.assertLess(
+                    parser.script_sources.index(code_module),
+                    parser.script_sources.index("note.js" if page == "note.html" else "../note.js"),
+                )
+                self.assertIn(theme_stylesheet, parser.stylesheet_sources)
+
+        self.assertTrue((DOCS_DIR / "vendor" / "catppuccin-mocha.css").is_file())
+
+    def test_note_styles_define_language_label_and_morandi_inline_code(self):
+        """Code chrome must expose its language and avoid the retired blue-gray chip."""
+        styles = (DOCS_DIR / "note.css").read_text(encoding="utf-8").upper()
+        self.assertIn("PRE::BEFORE", styles)
+        self.assertIn("CONTENT: ATTR(DATA-LANGUAGE)", styles)
+        for color in ("#F4E8EA", "#E8DDDF", "#8E5F68"):
+            self.assertIn(color, styles)
 
     def test_viewers_do_not_load_commonjs_highlight_language_modules(self):
         """Node-oriented Highlight.js modules throw `module is not defined` in browsers."""
