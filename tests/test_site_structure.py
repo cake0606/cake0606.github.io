@@ -53,6 +53,82 @@ EMPTY_NOTE_PATHS = (
 )
 
 CODE_FENCE_PATTERN = re.compile(r"^\s*(?:>\s*)?(```|~~~)([^\s`]*)\s*$")
+SVG_NAMESPACE = "{http://www.w3.org/2000/svg}"
+SVG_NUMBER_PATTERN = re.compile(r"[MHVL]|-?(?:\d+(?:\.\d*)?|\.\d+)")
+
+
+def parse_orthogonal_path(path_data):
+    tokens = SVG_NUMBER_PATTERN.findall(path_data)
+    points = []
+    current = None
+    index = 0
+
+    while index < len(tokens):
+        command = tokens[index]
+        index += 1
+        if command in ("M", "L"):
+            current = (float(tokens[index]), float(tokens[index + 1]))
+            index += 2
+        elif command == "H":
+            current = (float(tokens[index]), current[1])
+            index += 1
+        elif command == "V":
+            current = (current[0], float(tokens[index]))
+            index += 1
+        else:
+            raise ValueError(f"Unsupported SVG path command: {command}")
+        points.append(current)
+
+    return points
+
+
+def svg_node_bounds(node):
+    if node.tag == f"{SVG_NAMESPACE}rect":
+        x = float(node.attrib["x"])
+        y = float(node.attrib["y"])
+        return x, y, x + float(node.attrib["width"]), y + float(node.attrib["height"])
+
+    if node.tag == f"{SVG_NAMESPACE}polygon":
+        points = [
+            tuple(map(float, pair.split(",")))
+            for pair in node.attrib["points"].split()
+        ]
+        xs, ys = zip(*points)
+        return min(xs), min(ys), max(xs), max(ys)
+
+    raise AssertionError(f"Unsupported node element: {node.tag}")
+
+
+def segment_enters_bounds(segment, bounds):
+    (x1, y1), (x2, y2) = segment
+    left, top, right, bottom = bounds
+    if y1 == y2:
+        return top < y1 < bottom and max(min(x1, x2), left) < min(
+            max(x1, x2), right
+        )
+    if x1 == x2:
+        return left < x1 < right and max(min(y1, y2), top) < min(
+            max(y1, y2), bottom
+        )
+    raise AssertionError(f"Non-orthogonal segment: {segment}")
+
+
+def collinear_overlap_length(first, second):
+    (x1, y1), (x2, y2) = first
+    (x3, y3), (x4, y4) = second
+    if y1 == y2 == y3 == y4:
+        return max(
+            0,
+            min(max(x1, x2), max(x3, x4))
+            - max(min(x1, x2), min(x3, x4)),
+        )
+    if x1 == x2 == x3 == x4:
+        return max(
+            0,
+            min(max(y1, y2), max(y3, y4))
+            - max(min(y1, y2), min(y3, y4)),
+        )
+    return 0
 
 
 class HomepageParser(HTMLParser):
@@ -568,6 +644,109 @@ class InfraNotePilotTests(unittest.TestCase):
             "torch.where",
         ):
             self.assertIn(label, svg_text)
+
+    def _greedy_svg_geometry(self):
+        svg_root = ET.parse(self.VLLM_SAMPLING_SVG_PATH).getroot()
+        node_elements = [
+            element for element in svg_root.iter() if "data-node" in element.attrib
+        ]
+        edge_elements = [
+            element
+            for element in svg_root.iter(f"{SVG_NAMESPACE}path")
+            if "edge" in element.attrib.get("class", "").split()
+        ]
+        self.assertEqual(
+            len(node_elements),
+            len({element.attrib["data-node"] for element in node_elements}),
+        )
+        self.assertEqual(
+            len(edge_elements),
+            len({element.attrib.get("data-edge") for element in edge_elements}),
+        )
+        nodes = {
+            element.attrib["data-node"]: element for element in node_elements
+        }
+        edges = {
+            element.attrib["data-edge"]: element for element in edge_elements
+        }
+        return nodes, edges
+
+    def test_greedy_sampling_svg_and_drawio_keep_the_same_topology(self):
+        """Published and editable diagrams must describe the same flow graph."""
+        nodes, edges = self._greedy_svg_geometry()
+        self.assertTrue(nodes)
+        self.assertTrue(edges)
+
+        drawio_root = ET.parse(self.VLLM_SAMPLING_DRAWIO_PATH).getroot()
+        cells = drawio_root.findall("./diagram/mxGraphModel/root/mxCell")
+        node_cells = [cell for cell in cells if cell.attrib.get("vertex") == "1"]
+        edge_cells = [cell for cell in cells if cell.attrib.get("edge") == "1"]
+        drawio_nodes = {cell.attrib["id"] for cell in node_cells}
+        drawio_edges = {
+            (cell.attrib["source"], cell.attrib["target"])
+            for cell in edge_cells
+        }
+        svg_edges = {
+            (edge.attrib["data-source"], edge.attrib["data-target"])
+            for edge in edges.values()
+        }
+
+        self.assertEqual(len(node_cells), len(drawio_nodes))
+        self.assertEqual(len(edge_cells), len(drawio_edges))
+        self.assertEqual(set(nodes), drawio_nodes)
+        self.assertEqual(len(svg_edges), len(edges))
+        self.assertEqual(svg_edges, drawio_edges)
+
+    def test_greedy_sampling_connectors_clear_nodes_and_each_other(self):
+        """Connectors must neither cross unrelated nodes nor overlap each other."""
+        nodes, edges = self._greedy_svg_geometry()
+        bounds = {
+            node_id: svg_node_bounds(node) for node_id, node in nodes.items()
+        }
+        segments = {
+            edge_id: list(zip(points, points[1:]))
+            for edge_id, edge in edges.items()
+            for points in (parse_orthogonal_path(edge.attrib["d"]),)
+        }
+
+        for edge_id, edge_segments in segments.items():
+            edge = edges[edge_id]
+            endpoints = {edge.attrib["data-source"], edge.attrib["data-target"]}
+            for node_id, node_bounds in bounds.items():
+                if node_id not in endpoints:
+                    self.assertFalse(
+                        any(
+                            segment_enters_bounds(segment, node_bounds)
+                            for segment in edge_segments
+                        ),
+                        f"{edge_id} enters {node_id}",
+                    )
+
+        edge_ids = list(edges)
+        for index, first_id in enumerate(edge_ids):
+            for second_id in edge_ids[index + 1 :]:
+                overlaps = [
+                    collinear_overlap_length(first, second)
+                    for first in segments[first_id]
+                    for second in segments[second_id]
+                ]
+                self.assertEqual(
+                    max(overlaps, default=0),
+                    0,
+                    f"{first_id} overlaps {second_id}",
+                )
+
+    def test_greedy_sampling_arrow_approaches_are_visible(self):
+        """Every arrow needs a visible shaft before its marker begins."""
+        _, edges = self._greedy_svg_geometry()
+        for edge_id, edge in edges.items():
+            points = parse_orthogonal_path(edge.attrib["d"])
+            (x1, y1), (x2, y2) = points[-2:]
+            self.assertGreaterEqual(
+                abs(x2 - x1) + abs(y2 - y1),
+                36,
+                f"{edge_id} has no visible shaft before its arrow",
+            )
 
     def test_sampling_note_embeds_the_greedy_flow(self):
         """The note must connect its explanation to the published flowchart."""
