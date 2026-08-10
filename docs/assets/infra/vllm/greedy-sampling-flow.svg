@@ -19,102 +19,103 @@
   <rect width="1200" height="700" fill="#fff" />
 
   <text x="35" y="24" class="lane">PARAMETER NORMALIZATION</text>
-  <rect x="35" y="44" width="170" height="58" rx="15" class="node" />
-  <text x="120" y="68" class="label">SamplingParams</text>
-  <text x="120" y="88" class="small">raw temperature / seed</text>
+  <rect data-node="params" x="35" y="55" width="160" height="56" rx="15" class="node" />
+  <text x="115" y="79" class="label">SamplingParams</text>
+  <text x="115" y="99" class="small">raw temperature / seed</text>
 
-  <path d="M245 28 L350 73 L245 118 L140 73 Z" class="accent" transform="translate(105 0)" />
-  <text x="350" y="67" class="label">0 &lt; temperature &lt;</text>
-  <text x="350" y="88" class="small">_MAX_TEMP ?</text>
+  <polygon data-node="clamp-check" points="330,38 425,83 330,128 235,83" class="accent" />
+  <text x="330" y="77" class="label">0 &lt; temperature &lt;</text>
+  <text x="330" y="98" class="small">_MAX_TEMP ?</text>
 
-  <rect x="505" y="17" width="180" height="58" rx="15" class="accent" />
-  <text x="595" y="42" class="label">clamp to 0.01</text>
-  <text x="595" y="62" class="small">temperature = _MAX_TEMP</text>
+  <rect data-node="clamp" x="495" y="16" width="175" height="56" rx="15" class="accent" />
+  <text x="582.5" y="39" class="label">clamp to 0.01</text>
+  <text x="582.5" y="59" class="small">temperature = _MAX_TEMP</text>
 
-  <rect x="505" y="101" width="180" height="58" rx="15" class="node" />
-  <text x="595" y="126" class="label">_verify_args</text>
-  <text x="595" y="146" class="small">temperature &lt; 0 → error</text>
+  <rect data-node="verify" x="495" y="122" width="175" height="56" rx="15" class="node" />
+  <text x="582.5" y="145" class="label">_verify_args</text>
+  <text x="582.5" y="165" class="small">temperature &lt; 0 → error</text>
 
-  <path d="M800 85 L900 126 L800 167 L700 126 Z" class="accent" />
-  <text x="800" y="120" class="label">temperature &lt;</text>
-  <text x="800" y="141" class="small">_SAMPLING_EPS ?</text>
+  <polygon data-node="eps" points="805,108 900,150 805,192 710,150" class="accent" />
+  <text x="805" y="144" class="label">temperature &lt;</text>
+  <text x="805" y="165" class="small">_SAMPLING_EPS ?</text>
 
-  <rect x="965" y="66" width="200" height="58" rx="15" class="accent" />
-  <text x="1065" y="91" class="label">GREEDY</text>
-  <text x="1065" y="111" class="small">normalize top-k / top-p</text>
+  <rect data-node="greedy" x="950" y="76" width="200" height="56" rx="15" class="accent" />
+  <text x="1050" y="99" class="label">GREEDY</text>
+  <text x="1050" y="119" class="small">normalize top-k / top-p</text>
 
-  <path d="M800 178 L890 212 L800 246 L710 212 Z" class="node" />
-  <text x="800" y="218" class="label">seed is set ?</text>
-  <rect x="965" y="153" width="200" height="44" rx="13" class="node" />
-  <text x="1065" y="181" class="label">RANDOM_SEED</text>
-  <rect x="965" y="216" width="200" height="44" rx="13" class="node" />
-  <text x="1065" y="244" class="label">RANDOM</text>
+  <polygon data-node="seed" points="805,228 895,262 805,296 715,262" class="node" />
+  <text x="805" y="268" class="label">seed is set ?</text>
 
-  <path d="M205 73 H245" class="edge" />
-  <path d="M455 61 H505" class="edge" />
-  <text x="472" y="52" class="edge-label">yes</text>
-  <path d="M350 118 V130 H505" class="edge" />
-  <text x="418" y="123" class="edge-label">no</text>
-  <path d="M595 75 V101" class="edge" />
-  <path d="M685 130 H700" class="edge" />
-  <path d="M900 112 H965" class="edge" />
-  <text x="903" y="102" class="edge-label">yes</text>
-  <path d="M800 167 V178" class="edge" />
-  <text x="810" y="176" class="edge-label">no</text>
-  <path d="M890 202 H930 V175 H965" class="edge" />
-  <text x="906" y="190" class="edge-label">yes</text>
-  <path d="M890 222 H930 V238 H965" class="edge" />
-  <text x="906" y="236" class="edge-label">no</text>
+  <rect data-node="random-seed" x="965" y="202" width="190" height="44" rx="13" class="node" />
+  <text x="1060" y="229" class="label">RANDOM_SEED</text>
+  <rect data-node="random" x="965" y="266" width="190" height="44" rx="13" class="node" />
+  <text x="1060" y="293" class="label">RANDOM</text>
 
-  <rect x="475" y="270" width="250" height="58" rx="16" class="paper" />
-  <text x="600" y="294" class="label">Batch metadata</text>
-  <text x="600" y="315" class="small">all_greedy / all_random</text>
-  <path d="M1065 124 V258 H640 V270" class="edge" />
-  <path d="M1065 197 V250 H610 V270" class="edge" />
-  <path d="M1065 260 H580 V270" class="edge" />
+  <path d="M195 83 H235" class="edge" data-edge="e1" data-source="params" data-target="clamp-check" />
+  <path d="M425 83 H445 V44 H495" class="edge" data-edge="e2" data-source="clamp-check" data-target="clamp" />
+  <text x="459" y="36" class="edge-label">yes</text>
+  <path d="M330 128 V150 H495" class="edge" data-edge="e3" data-source="clamp-check" data-target="verify" />
+  <text x="405" y="143" class="edge-label">no</text>
+  <path d="M582.5 72 V122" class="edge" data-edge="e4" data-source="clamp" data-target="verify" />
+  <path d="M670 150 H710" class="edge" data-edge="e5" data-source="verify" data-target="eps" />
+  <path d="M900 150 H910 V104 H950" class="edge" data-edge="e6" data-source="eps" data-target="greedy" />
+  <text x="916" y="96" class="edge-label">yes</text>
+  <path d="M805 192 V228" class="edge" data-edge="e7" data-source="eps" data-target="seed" />
+  <text x="815" y="215" class="edge-label">no</text>
+  <path d="M850 245 H925 V224 H965" class="edge" data-edge="e8" data-source="seed" data-target="random-seed" />
+  <text x="935" y="216" class="edge-label">yes</text>
+  <path d="M850 279 H925 V288 H965" class="edge" data-edge="e9" data-source="seed" data-target="random" />
+  <text x="935" y="281" class="edge-label">no</text>
 
-  <line x1="35" y1="350" x2="1165" y2="350" stroke="#e8dddf" stroke-width="2" />
-  <text x="35" y="373" class="lane">BATCH EXECUTION</text>
+  <rect data-node="metadata" x="475" y="315" width="250" height="58" rx="16" class="paper" />
+  <text x="600" y="340" class="label">Batch metadata</text>
+  <text x="600" y="361" class="small">all_greedy / all_random</text>
+  <path d="M1150 104 H1195 V362 H725" class="edge" data-edge="e10" data-source="greedy" data-target="metadata" />
+  <path d="M1155 224 H1185 V344 H725" class="edge" data-edge="e11" data-source="random-seed" data-target="metadata" />
+  <path d="M1155 288 H1175 V326 H725" class="edge" data-edge="e12" data-source="random" data-target="metadata" />
 
-  <rect x="60" y="390" width="210" height="50" rx="14" class="accent" />
-  <text x="165" y="421" class="label">all_greedy</text>
-  <rect x="490" y="390" width="220" height="50" rx="14" class="node" />
-  <text x="600" y="421" class="label">all_random</text>
-  <rect x="920" y="390" width="220" height="50" rx="14" class="node" />
-  <text x="1030" y="421" class="label">mixed batch</text>
-  <path d="M600 328 V365 H165 V390" class="edge" />
-  <path d="M600 328 V390" class="edge" />
-  <path d="M600 365 H1030 V390" class="edge" />
+  <line x1="35" y1="395" x2="1165" y2="395" stroke="#e8dddf" stroke-width="2" />
+  <text x="35" y="418" class="lane">BATCH EXECUTION</text>
 
-  <rect x="60" y="480" width="210" height="52" rx="14" class="paper" />
-  <text x="165" y="512" class="label">argmax</text>
-  <path d="M165 440 V480" class="edge" />
+  <rect data-node="all-greedy" x="60" y="430" width="210" height="50" rx="14" class="accent" />
+  <text x="165" y="461" class="label">all_greedy</text>
+  <rect data-node="all-random" x="490" y="430" width="220" height="50" rx="14" class="node" />
+  <text x="600" y="461" class="label">all_random</text>
+  <rect data-node="mixed" x="920" y="430" width="220" height="50" rx="14" class="node" />
+  <text x="1030" y="461" class="label">mixed batch</text>
+  <path d="M520 373 V394 H165 V430" class="edge" data-edge="e13" data-source="metadata" data-target="all-greedy" />
+  <path d="M600 373 V430" class="edge" data-edge="e14" data-source="metadata" data-target="all-random" />
+  <path d="M680 373 V394 H1030 V430" class="edge" data-edge="e15" data-source="metadata" data-target="mixed" />
 
-  <rect x="480" y="468" width="240" height="82" rx="14" class="paper" />
-  <text x="600" y="491" class="small">temperature → processors</text>
-  <text x="600" y="516" class="label">top-k / top-p</text>
-  <text x="600" y="538" class="small">random_sampled</text>
-  <path d="M600 440 V468" class="edge" />
+  <rect data-node="argmax" x="60" y="520" width="210" height="52" rx="14" class="paper" />
+  <text x="165" y="552" class="label">argmax</text>
+  <path d="M165 480 V520" class="edge" data-edge="e16" data-source="all-greedy" data-target="argmax" />
 
-  <rect x="790" y="472" width="170" height="66" rx="14" class="paper" />
-  <text x="875" y="497" class="small">greedy_sampled</text>
-  <text x="875" y="520" class="label">argmax</text>
-  <rect x="1000" y="462" width="175" height="86" rx="14" class="paper" />
-  <text x="1088" y="486" class="small">safe temperature</text>
-  <text x="1088" y="510" class="label">top-k / top-p</text>
-  <text x="1088" y="534" class="small">random_sampled</text>
-  <path d="M1030 440 V454 H875 V472" class="edge" />
-  <path d="M1030 440 V462" class="edge" />
+  <rect data-node="random-pipeline" x="480" y="520" width="240" height="82" rx="14" class="paper" />
+  <text x="600" y="544" class="small">temperature → processors</text>
+  <text x="600" y="569" class="label">top-k / top-p</text>
+  <text x="600" y="590" class="small">random_sampled</text>
+  <path d="M600 480 V520" class="edge" data-edge="e17" data-source="all-random" data-target="random-pipeline" />
 
-  <rect x="900" y="590" width="210" height="58" rx="15" class="accent" />
-  <text x="1005" y="614" class="label">torch.where</text>
-  <text x="1005" y="635" class="small">temperature mask</text>
-  <path d="M875 538 V566 H960 V590" class="edge" />
-  <path d="M1088 548 V566 H1050 V590" class="edge" />
+  <rect data-node="mixed-greedy" x="760" y="525" width="180" height="66" rx="14" class="paper" />
+  <text x="850" y="550" class="small">greedy_sampled</text>
+  <text x="850" y="575" class="label">argmax</text>
+  <rect data-node="mixed-random" x="1000" y="520" width="175" height="86" rx="14" class="paper" />
+  <text x="1088" y="544" class="small">safe temperature</text>
+  <text x="1088" y="568" class="label">top-k / top-p</text>
+  <text x="1088" y="592" class="small">random_sampled</text>
+  <path d="M970 480 V485 H850 V525" class="edge" data-edge="e18" data-source="mixed" data-target="mixed-greedy" />
+  <path d="M1090 480 V520" class="edge" data-edge="e19" data-source="mixed" data-target="mixed-random" />
 
-  <rect x="490" y="628" width="220" height="50" rx="15" fill="#f7f7f6" stroke="#8e5f68" stroke-width="2" />
-  <text x="600" y="659" class="label">sampled token ids</text>
-  <path d="M165 532 V653 H490" class="edge" />
-  <path d="M600 550 V628" class="edge" />
-  <path d="M900 619 H760 V653 H710" class="edge" />
+  <rect data-node="where" x="900" y="640" width="210" height="50" rx="15" class="accent" />
+  <text x="1005" y="661" class="label">torch.where</text>
+  <text x="1005" y="681" class="small">temperature mask</text>
+  <path d="M850 591 V660 H900" class="edge" data-edge="e20" data-source="mixed-greedy" data-target="where" />
+  <path d="M1088 606 H1165 V670 H1110" class="edge" data-edge="e21" data-source="mixed-random" data-target="where" />
+
+  <rect data-node="output" x="490" y="645" width="220" height="45" rx="15" class="node" />
+  <text x="600" y="673" class="label">sampled token ids</text>
+  <path d="M165 572 V667 H490" class="edge" data-edge="e22" data-source="argmax" data-target="output" />
+  <path d="M600 602 V645" class="edge" data-edge="e23" data-source="random-pipeline" data-target="output" />
+  <path d="M900 675 H760 V667 H710" class="edge" data-edge="e24" data-source="where" data-target="output" />
 </svg>
