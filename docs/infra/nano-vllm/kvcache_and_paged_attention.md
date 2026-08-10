@@ -1,6 +1,6 @@
 # nano-vLLM：KV Cache 与 Paged Attention
 
-## 这篇笔记解决什么问题
+## KV Cache 与 Paged Attention 解决的问题
 
 自回归生成会在每一步重复使用历史 token 的 Key 和 Value。若每条序列各自保存一段连续显存，长度变化、提前结束和并发调度很容易造成预留浪费与碎片。Paged Attention 的核心思路是把 KV Cache 切成固定大小的物理块，让一条逻辑连续的序列可以分散存放，再通过块表恢复顺序。
 
@@ -24,7 +24,7 @@
 
 这里需要区分两种地址：`block_table` 记录一条序列的“逻辑块 → 物理块”关系；`slot_mapping` 则进一步定位到物理块内的具体 token 槽位。
 
-## 全局 KV Cache Tensor
+## 全局 KV Cache 张量
 
 nano-vLLM 在模型执行器中一次性申请全局缓存，形状可以抽象为：
 
@@ -46,13 +46,13 @@ nano-vLLM 在模型执行器中一次性申请全局缓存，形状可以抽象�
 
 `BlockManager` 同时维护物理块对象、空闲块队列、使用中块集合，以及“前缀哈希 → 物理块”的索引。一个块的 `ref_count` 表示当前有多少条序列仍在引用它。
 
-### 1. can_allocate：先找可复用的完整前缀
+### 1. `can_allocate`：先找可复用的完整前缀
 
 进入 prefill 前，序列只有 token IDs，还没有 `block_table`。`can_allocate` 对逻辑块做链式哈希，在缓存索引中寻找从序列开头连续匹配的块。匹配不仅比较哈希，还会核对块中的 token IDs。
 
 扫描范围使用 `range(seq.num_blocks - 1)`：最后一个逻辑块可能尚未填满，内容还会变化，因此只有完整块可以作为稳定的前缀缓存。函数还会结合剩余空闲块判断本次分配是否可行。
 
-### 2. allocate：复用前缀，再补齐新块
+### 2. `allocate`：复用前缀，再补齐新块
 
 下面是用于表达控制流的结构化伪代码，不是可直接运行的源码：
 
@@ -72,7 +72,7 @@ def allocate(sequence, cached_block_count):
 
 已在使用的缓存块只增加 `ref_count`；仍保留缓存内容但位于空闲队列中的块会被重新激活；不能复用的逻辑块则领取新的物理块。
 
-### 3. may_append：decode 跨块时扩容
+### 3. `may_append`：decode 跨块时扩容
 
 decode 每次追加一个 token。若追加后满足下面的边界条件，说明新 token 是一个新逻辑块的第一个元素，需要再分配一个物理块：
 
@@ -82,17 +82,17 @@ needs_new_block = len(sequence) % block_size == 1
 
 因此，`may_append` 不是每生成一个 token 都分配块，而是在跨越块边界时分配。
 
-### 4. hash_blocks：登记新完成的块
+### 4. `hash_blocks`：登记新完成的块
 
 当块已经完整且尚未建立哈希时，`hash_blocks` 计算链式前缀哈希，并把它登记到缓存索引。未填满的尾块不会提前成为可复用前缀。
 
-### 5. deallocate：引用归零后惰性回收
+### 5. `deallocate`：引用归零后惰性回收
 
 序列结束时，`deallocate` 依次减少其物理块的 `ref_count`。只有计数降到零，块才会从使用中集合移回空闲队列。回收不会立即清空显存内容，因此同一完整前缀可能在块被覆盖前再次命中。
 
 “内容暂留”不等于“哈希映射永久有效”。空闲块被重新分配给其他内容时，如果旧哈希仍指向这个物理块，分配逻辑会删除旧映射，避免把已经覆盖的块误认为缓存命中。
 
-## 从 block_table 到 slot_mapping
+## 从 `block_table` 到 `slot_mapping`
 
 设 token 在序列中的位置为 `position`，转换分四步：
 
@@ -151,7 +151,7 @@ slots = [28, 29, 30, 31, 8, 9]
 - **decode 不会每步都申请物理块。** 只有新 token 跨入下一个逻辑块时，`may_append` 才需要扩容。
 - **`slot_mapping` 主要服务于写入。** 历史 K/V 的读取仍依赖块表和上下文元数据。
 
-### 参考资料
+## 参考资料
 
 - [nano-vLLM：BlockManager 实现](https://github.com/GeeeekExplorer/nano-vllm/blob/main/nanovllm/engine/block_manager.py)
 - [nano-vLLM：ModelRunner 实现](https://github.com/GeeeekExplorer/nano-vllm/blob/main/nanovllm/engine/model_runner.py)

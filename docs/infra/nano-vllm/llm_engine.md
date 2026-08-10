@@ -1,33 +1,34 @@
----
-id: llm_engine
-aliases: []
-tags: []
----
+# nano-vLLM LLMEngine
 
-## init流程
+## 初始化流程
+
+`LLMEngine.__init__` 依次构建配置、张量并行子进程、主 `ModelRunner`、`self.tokenizer` 和 `Scheduler`：
+
 ```python
 class LLMEngine:
     def __init__(self, model, **kwargs):
-        # 1. 构建 Config
+        config_fields = {field.name for field in fields(Config)}
+        config_kwargs = {k: v for k, v in kwargs.items() if k in config_fields}
         config = Config(model, **config_kwargs)
+        Sequence.block_size = config.kvcache_block_size
 
-        # 2. 若 TP > 1，spawn 子进程（本篇不展开）
+        self.ps = []
+        self.events = []
+        ctx = mp.get_context("spawn")
         for i in range(1, config.tensor_parallel_size):
+            event = ctx.Event()
             process = ctx.Process(target=ModelRunner, args=(config, i, event))
             process.start()
+            self.ps.append(process)
+            self.events.append(event)
 
-        # 3. 创建 ModelRunner（rank 0）—— 加载模型、warmup、分配 KV cache、录 CUDA Graph
         self.model_runner = ModelRunner(config, 0, self.events)
 
-        # 4. 加载 tokenizer，拿到 eos_token_id
-        self.tokenizer = AutoTokenizer.from_pretrained(config.model)
+        self.tokenizer = AutoTokenizer.from_pretrained(config.model, use_fast=True)
         config.eos = self.tokenizer.eos_token_id
 
-        # 5. 创建 Scheduler —— 注意：必须在 ModelRunner 之后
         self.scheduler = Scheduler(config)
-
-        # 6. 注册退出清理
         atexit.register(self.exit)
 ```
-> ModelRunner在init时会通过显存估算计算出能分配的kvcache_block数量
- 
+
+初始化顺序中，`ModelRunner` 必须先于 `Scheduler` 创建。`ModelRunner.__init__` 会执行显存估算，把可分配的 KV Cache 块数写入 `config.num_kvcache_blocks`；随后 `Scheduler` 才能用这个值构造 `BlockManager`。

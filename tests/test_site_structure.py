@@ -504,11 +504,11 @@ class InfraNotePilotTests(unittest.TestCase):
         )
 
         expected_sections = (
-            "## 这篇笔记解决什么问题",
+            "## KV Cache 与 Paged Attention 解决的问题",
             "## 三层数据流",
-            "## 全局 KV Cache Tensor",
+            "## 全局 KV Cache 张量",
             "## BlockManager 生命周期",
-            "## 从 block_table 到 slot_mapping",
+            "## 从 `block_table` 到 `slot_mapping`",
             "## 完整映射示例",
             "## 关键结论与常见误区",
         )
