@@ -1,3 +1,4 @@
+import json
 from html.parser import HTMLParser
 from pathlib import Path
 import re
@@ -8,6 +9,35 @@ import xml.etree.ElementTree as ET
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = REPO_ROOT / "docs"
+
+EXPECTED_PLAN_GROUPS = (
+    (
+        "infra",
+        (
+            "prefill与decode",
+            "显存计算",
+            "fa原理",
+            "模型量化",
+            "kvcache量化",
+            "投机解码",
+            "稀疏注意力与长上下文",
+            "continguous batching",
+            "chunked prefill",
+            "cuda graph",
+            "triton",
+            "tp、pp、ep",
+            "性能指标与分析工具",
+        ),
+    ),
+    (
+        "llm",
+        (
+            "mha、mqa、gqa",
+            "rope、rmsnorm、swiglu",
+            "dense与moe",
+        ),
+    ),
+)
 
 EXPECTED_NOTE_PATHS = (
     "infra/cuda/cuda内存.md",
@@ -138,7 +168,6 @@ class HomepageParser(HTMLParser):
         self.nav_targets = []
         self.note_links = []
         self.project_entries = []
-        self.plan_entries = []
         self.top_level_summaries = []
         self.second_level_summaries = []
         self.local_assets = []
@@ -178,9 +207,6 @@ class HomepageParser(HTMLParser):
 
         if {"project-item", "project-card"} & classes:
             self.project_entries.append(tag)
-
-        if "plan-item" in classes:
-            self.plan_entries.append(tag)
 
         if "theme-toggle" in classes:
             self.theme_toggles.append(tag)
@@ -345,6 +371,9 @@ class HomepageTests(unittest.TestCase):
     def setUpClass(cls):
         cls.parser = HomepageParser()
         cls.parser.feed((DOCS_DIR / "index.html").read_text(encoding="utf-8"))
+        cls.plan_data = json.loads(
+            (DOCS_DIR / "plan.json").read_text(encoding="utf-8")
+        )
         cls.styles = (DOCS_DIR / "style.css").read_text(encoding="utf-8").upper()
         cls.theme_sources = "\n".join(
             (DOCS_DIR / path).read_text(encoding="utf-8").upper()
@@ -364,10 +393,26 @@ class HomepageTests(unittest.TestCase):
         self.assertIn("projects", self.parser.section_ids)
         self.assertFalse(self.parser.project_entries)
 
-    def test_plan_publishes_no_entries(self):
-        """Omitting the empty Plan module or adding sample plans must fail."""
-        self.assertIn("plan", self.parser.section_ids)
-        self.assertFalse(self.parser.plan_entries)
+    def test_plan_data_matches_the_approved_initial_content(self):
+        self.assertIsInstance(self.plan_data, list)
+        actual_groups = tuple(
+            (group["title"], tuple(item["text"] for item in group["items"]))
+            for group in self.plan_data
+        )
+        self.assertEqual(actual_groups, EXPECTED_PLAN_GROUPS)
+
+        for group in self.plan_data:
+            with self.subTest(group=group["title"]):
+                self.assertEqual(set(group), {"title", "items"})
+                self.assertIsInstance(group["title"], str)
+                self.assertTrue(group["title"].strip())
+                self.assertIsInstance(group["items"], list)
+                for item in group["items"]:
+                    self.assertEqual(set(item), {"text", "completed"})
+                    self.assertIsInstance(item["text"], str)
+                    self.assertTrue(item["text"].strip())
+                    self.assertIs(type(item["completed"]), bool)
+                    self.assertFalse(item["completed"])
 
     def test_note_tree_exposes_the_approved_directory_levels(self):
         """Flattening or omitting either directory level must fail."""

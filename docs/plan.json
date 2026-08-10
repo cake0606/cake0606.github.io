@@ -1,0 +1,28 @@
+[
+  {
+    "title": "infra",
+    "items": [
+      { "text": "prefill与decode", "completed": false },
+      { "text": "显存计算", "completed": false },
+      { "text": "fa原理", "completed": false },
+      { "text": "模型量化", "completed": false },
+      { "text": "kvcache量化", "completed": false },
+      { "text": "投机解码", "completed": false },
+      { "text": "稀疏注意力与长上下文", "completed": false },
+      { "text": "continguous batching", "completed": false },
+      { "text": "chunked prefill", "completed": false },
+      { "text": "cuda graph", "completed": false },
+      { "text": "triton", "completed": false },
+      { "text": "tp、pp、ep", "completed": false },
+      { "text": "性能指标与分析工具", "completed": false }
+    ]
+  },
+  {
+    "title": "llm",
+    "items": [
+      { "text": "mha、mqa、gqa", "completed": false },
+      { "text": "rope、rmsnorm、swiglu", "completed": false },
+      { "text": "dense与moe", "completed": false }
+    ]
+  }
+]
