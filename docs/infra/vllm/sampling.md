@@ -1,183 +1,160 @@
-## greedy Sampling
-### 参数定义
-在用户构造一个SamplingParams(temperature=0, n=1)时：
-1.  进行参数检查， 如果温度<0就返回false
-2. 通过两个阈值常量来划分温度区间：
+# vLLM Sampling
+
+## Sampling 解决的问题
+
+模型前向计算只产生一行 `logits`，采样器必须把它变成下一个 `token_id`。同一个 batch 又可能同时包含确定性的 Greedy 请求和随机采样请求，因此 vLLM 需要同时解决两件事：
+
+- 按请求参数选择 `GREEDY`、`RANDOM_SEED` 或 `RANDOM`。
+- 在不拆分 batch 的前提下，让纯 Greedy、纯 Random 和混合 batch 都走高效路径。
+
+本文以 vLLM V1 的 `SamplingParams`、`SamplingMetadata` 与 `Sampler` 为主线。源码会持续演进，函数位置可能变化，但参数归一化和 batch 分流这两个核心思路保持一致。
+
+## Greedy Sampling 判定
+
+`SamplingParams.sampling_type` 用 `temperature` 与 `_SAMPLING_EPS` 判断采样类型：
+
+```python
+@cached_property
+def sampling_type(self) -> SamplingType:
+    if self.temperature < _SAMPLING_EPS:
+        return SamplingType.GREEDY
+    if self.seed is not None:
+        return SamplingType.RANDOM_SEED
+    return SamplingType.RANDOM
+```
+
+当前源码中的两个阈值分别是：
+
+```python
 _SAMPLING_EPS = 1e-5
 _MAX_TEMP = 1e-2
-
-通过温度区间划分GREEDY和RANDOM：
-```python
-    @cached_property
-    def sampling_type(self) -> SamplingType:
-        if self.temperature < _SAMPLING_EPS:
-            return SamplingType.GREEDY
-        if self.seed is not None:
-            return SamplingType.RANDOM_SEED
-        return SamplingType.RANDOM
-```
-  - temp < 1e-5 → GREEDY
-  - 1e-5 ≤ temp < 0.01 → 钳位到 0.01，仍是 RANDOM
-  - temp ≥ 0.01 → 正常 RANDOM
-使用1e-5而不是==0来判断GREEDY， 是为了浮点安全， 如果用户传1e-6这种极小值， 在softmax中无意义， 直接判定为greedy
-
-使用SamplingType来枚举
-```python
-class SamplingType(IntEnum):
-    GREEDY = 0
-    RANDOM = 1
-    RANDOM_SEED = 2
-```
-GREEDYF放在第一位， 处于最优先判定。
-
-3. 在判定为GREEDY时， 对参数进行强制规整
-```python
-        if self.temperature < _SAMPLING_EPS:
-            # Zero temperature means greedy sampling.
-            self.top_p = 1.0
-            self.top_k = 0
-            self.min_p = 0.0
-            self._verify_greedy_sampling()
-```
-其中
-  - top_p = 1.0（保留全部概率质量，不截断）
-  - top_k = 0（vLLM 约定 0 = 不截断）
-  - min_p = 0.0（不设下限)
-
-4. 后续代码在访问params.sampling_type -> cached_property返回GREEDY, 且参数是规整后的干净状态
-
-## Batch聚合
-在一个batch中同时混合了greed和random请求时， 在不拆batch的前提下， 使greedy走最省算力的路径。
-1. 在add_request中注册：
-```python
-        if sampling_params := request.sampling_params:
-            if sampling_params.sampling_type == SamplingType.GREEDY:
-                # Should avoid division by zero later when apply_temperature.
-                self.temperature_cpu[req_index] = 0.0
-                self.greedy_reqs.add(req_id)
-            else:
-                self.temperature_cpu[req_index] = sampling_params.temperature
-                self.random_reqs.add(req_id)
-```
-每个请求加入batch时， 会按照sampling_type加入到对应的集合中。
-在GREEDY分支中显式将temperature_cpu[req_index] = 0， 是为了下游使用torch.where时有确定的0 。
-
-2. 节省一次temperature张量拷贝
-```python
-    def _make_sampling_metadata(self) -> SamplingMetadata:
-        num_reqs = self.num_reqs
-        if not self.all_greedy:
-            temperature = copy_slice(
-                self.temperature_cpu_tensor, self.temperature, num_reqs
-            )
-        else:
-            temperature = None
-```
-在all greedy的时候， 直接将temperature设置为None， 不传这个张量。
-在sample/sampler.py中
-```python
-  if sampling_metadata.all_random:
-            greedy_sampled = None
-        else:
-            greedy_sampled = self.greedy_sample(logits)
-            if sampling_metadata.all_greedy:
-                processed_logprobs = None
-                if (
-                    sampling_metadata.max_num_logprobs is not None
-                    or sampling_metadata.logprob_token_ids
-                ):
-                    if logprobs_mode == "processed_logits":
-                        processed_logprobs = logits
-                    elif logprobs_mode == "processed_logprobs":
-                        processed_logprobs = self.compute_logprobs(logits)
-                return greedy_sampled, processed_logprobs
-
-        assert sampling_metadata.temperature is not None
-```
-这样保证了：
- temperature is None ⟺ all_greedy=True ⟺ sample() 会在 assert 之前 return。
-
-3. 混合batch的处理
-首先对logits进行argmax：
-```python
- greedy_sampled = self.greedy_sample(logits)
-```
-```python
-    @staticmethod
-    def apply_temperature(
-        logits: torch.Tensor,
-        temp: torch.Tensor,
-        all_random: bool,
-    ) -> torch.Tensor:
-        # Use in-place division to avoid creating a new tensor.
-        # Avoid division by zero if there are greedy requests.
-        if not all_random:
-            temp = torch.where(temp < _SAMPLING_EPS, 1.0, temp)
-        return logits.div_(temp.unsqueeze(dim=1))
-``` 
-apply_temperature会先对温度小于_SAMPLING_EPS的temp设置为1.0， 防止出现div 0， 然后对整个logits进行div temp的操作。
-
-通过processor对logits进行处理：
-```python
-        # Apply logits processors that only apply to random sampling
-        # (argmax invariant)
-        for processor in sampling_metadata.logitsprocs.argmax_invariant:
-            logits = processor.apply(logits)
-```
-> 生成token的整体流程是： model forward -> logits(一个词表) -> processor加工logits -> 采样 -> 选出一个token
-processor对原始分数logits做某种修改， 例如：
-  - MinPLogitsProcessor：按概率屏蔽低分 token
-  - MinTokensLogitsProcessor：屏蔽 EOS（强制至少生成 N 个 token 再停）
-  - LogitBiasLogitsProcessor：给指定 token 加减分数
-argmax_invariant指在processor应用之后， 分数最大的token不变。
-对于greedy来说， min_p对它无效。对random来说， 保留概率>= max_prob * min_p的token。
-
-对logits进行topk-topp处理：
-```python
- logits_sort, logits_idx = logits.sort(dim=-1, descending=False)
-```
-首先按照logits分数进行升序排序， 用logits_idx维护分数与token_id的对应关系。
-```python
- if k is not None:
-        # Apply top-k.
-        top_k_mask = logits_sort.size(1) - k.to(torch.long)  # shape: B
-        # Get all the top_k values.
-        top_k_mask = logits_sort.gather(1, top_k_mask.unsqueeze(dim=1))
-        top_k_mask = logits_sort < top_k_mask
-        logits_sort.masked_fill_(top_k_mask, -float("inf"))
-```
-top k保留前k大：
-    1. 计算第k名的索引
-    2. gather出第k名的值作为阈值
-    3. 比阈值小的设置为-inf
-```python
- if p is not None:
-        # Apply top-p.
-        probs_sort = logits_sort.softmax(dim=-1)
-        probs_sum = torch.cumsum(probs_sort, dim=-1, out=probs_sort)
-        top_p_mask = probs_sum <= 1 - p.unsqueeze(dim=1)
-        # at least one
-        top_p_mask[:, -1] = False
-        logits_sort.masked_fill_(top_p_mask, -float("inf"))
-```
-top p按累积概率保留：
-   1. 对排序后的logits进行一次softmax
-   2. 计算升序累积和
-   3. 累积值<= 1-p 的屏蔽
-   4. 末尾一定保留
-
-```python
-    # Re-sort the probabilities.
-    return logits.scatter_(dim=-1, index=logits_idx, src=logits_sort)
-```
-把logits_sort的值写回logits。
-
-```python
-        sampled = torch.where(
-            sampling_metadata.temperature < _SAMPLING_EPS,
-            greedy_sampled,
-            random_sampled,
-            out=greedy_sampled,  # Reuse tensor
-        )
 ```
 
+由此可以得到三个温度区间：
+
+1. `temperature < 1e-5`：判定为 `SamplingType.GREEDY`。
+2. `1e-5 <= temperature < 1e-2`：仍属于随机采样，但会被抬高到 `_MAX_TEMP`，避免过小温度引起数值问题。
+3. `temperature >= 1e-2`：使用用户给定温度进行随机采样。
+
+Greedy 的判断不用严格的 `temperature == 0`，是为了给浮点输入留出稳定边界。进入 Greedy 分支后，`SamplingParams.__post_init__` 还会关闭只对随机截断有意义的参数：
+
+```python
+if self.temperature < _SAMPLING_EPS:
+    self.top_p = 1.0
+    self.top_k = 0
+    self.min_p = 0.0
+    self._verify_greedy_sampling()
+```
+
+这里 `top_p = 1.0`、`top_k = 0` 和 `min_p = 0.0` 都表示不截断候选 token；`_verify_greedy_sampling()` 则要求 Greedy 请求的 `n` 必须为 `1`。
+
+## Greedy Sampling 流程
+
+下面的流程图把参数判定与 batch 内的实际执行路径连在一起。图中的三条 batch 路径并不是三套独立调度器，而是 `Sampler.sample()` 根据 `all_greedy` 和 `all_random` 选择的快路径。
+
+![vLLM Greedy Sampling 流程](../../assets/infra/vllm/greedy-sampling-flow.svg)
+
+## Batch 聚合
+
+请求加入 batch 时，元数据层会记录每个请求的采样类型。Greedy 请求的温度槽位保持为 `0.0`，随机请求则保存真实温度：
+
+```python
+if sampling_params.sampling_type == SamplingType.GREEDY:
+    self.temperature_cpu[req_index] = 0.0
+    self.greedy_reqs.add(req_id)
+else:
+    self.temperature_cpu[req_index] = sampling_params.temperature
+    self.random_reqs.add(req_id)
+```
+
+随后可以从集合状态派生 `all_greedy` 与 `all_random`，避免逐行启动不同 kernel。
+
+### All Greedy
+
+当 `all_greedy` 为真时，不需要把 temperature tensor 复制到 GPU。采样器直接计算 `argmax` 并提前返回：
+
+```python
+greedy_sampled = self.greedy_sample(logits)
+if sampling_metadata.all_greedy:
+    return greedy_sampled, processed_logprobs
+```
+
+这条路径不做温度缩放，不构造随机概率分布，也不调用随机数生成器。
+
+### All Random
+
+当 `all_random` 为真时，采样器跳过预先计算的 Greedy `argmax`，依次执行温度缩放、argmax-invariant processors、`top-k / top-p` 截断和随机采样。
+
+### 混合 Batch
+
+混合 batch 需要同时保留两种结果。采样器先对整批 `logits` 计算 `greedy_sampled`，再生成 `random_sampled`。为避免 Greedy 行执行除零，`apply_temperature()` 用 `torch.where` 临时把这些行的温度替换为 `1.0`：
+
+```python
+@staticmethod
+def apply_temperature(logits, temp, all_random):
+    if not all_random:
+        temp = torch.where(temp < _SAMPLING_EPS, 1.0, temp)
+    return logits.div_(temp.unsqueeze(dim=1))
+```
+
+最后再次用请求级 temperature mask 合并两条路径：
+
+```python
+sampled = torch.where(
+    sampling_metadata.temperature < _SAMPLING_EPS,
+    greedy_sampled,
+    random_sampled,
+    out=greedy_sampled,
+)
+```
+
+因此，Greedy 行虽然参与了随机路径的批量 tensor 运算，最终结果仍取自预先计算的 `argmax`。
+
+## Logits 处理顺序
+
+`Sampler` 并非拿到原始 `logits` 就立即采样。以当前 V1 实现为例，主要顺序是：
+
+1. 应用可能改变 `argmax` 的约束和 processors，例如 allowed-token mask、bad words、最小生成长度与 logit bias。
+2. 应用 repetition、frequency 和 presence penalties。
+3. 若 batch 含 Greedy 请求，先计算 `argmax`。
+4. 对随机路径应用 `temperature`。
+5. 应用不改变 `argmax` 的 processors，例如默认的 `min_p` processor。
+6. 应用 `top-k / top-p` 并随机采样。
+7. 混合 batch 用 `torch.where` 选回每一行对应的结果。
+
+“argmax-invariant”表示 processor 不会改变分数最高 token 的身份，所以它可以放在 Greedy 结果计算之后；反之，可能改变最高分 token 的 processor 必须先执行。
+
+## Top-k 与 Top-p
+
+`top-k` 保留分数最高的 `k` 个 token，其余位置写入负无穷：
+
+```python
+top_k_mask = logits_sort.size(1) - k.to(torch.long)
+top_k_threshold = logits_sort.gather(1, top_k_mask.unsqueeze(dim=1))
+logits_sort.masked_fill_(logits_sort < top_k_threshold, -float("inf"))
+```
+
+`top-p` 按概率质量保留最小候选集合。vLLM 的实现可以在升序排列上屏蔽累计概率位于 `1 - p` 之前的低概率 token，并强制至少保留一个候选：
+
+```python
+probs_sort = logits_sort.softmax(dim=-1)
+probs_sum = torch.cumsum(probs_sort, dim=-1, out=probs_sort)
+top_p_mask = probs_sum <= 1 - p.unsqueeze(dim=1)
+top_p_mask[:, -1] = False
+logits_sort.masked_fill_(top_p_mask, -float("inf"))
+```
+
+处理完毕后，`scatter_()` 按 `logits_idx` 把排序后的分数写回原 token 顺序。
+
+## 关键结论
+
+- `temperature < _SAMPLING_EPS` 才是源码层面的 Greedy 判定条件。
+- Greedy 参数会被归一化，`top_k`、`top_p` 和 `min_p` 不再影响候选集合。
+- `all_greedy` 直接 `argmax` 并提前返回；`all_random` 不计算 Greedy 结果。
+- 混合 batch 通过安全温度和 `torch.where` 共用向量化计算，同时保证每行采用正确策略。
+- processor 的相对顺序取决于它是否可能改变 `argmax`。
+
+## 参考资料
+
+- [vLLM SamplingParams 源码](https://github.com/vllm-project/vllm/blob/main/vllm/sampling_params.py)
+- [vLLM V1 Sampler API 与源码](https://docs.vllm.ai/en/latest/api/vllm/v1/sample/sampler/)

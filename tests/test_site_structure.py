@@ -456,6 +456,13 @@ class InfraNotePilotTests(unittest.TestCase):
     NOTE_PATH = DOCS_DIR / "infra" / "nano-vllm" / "kvcache_and_paged_attention.md"
     DRAWIO_PATH = DOCS_DIR / "assets" / "infra" / "nano-vllm" / "kv-cache-dataflow.drawio"
     SVG_PATH = DOCS_DIR / "assets" / "infra" / "nano-vllm" / "kv-cache-dataflow.svg"
+    VLLM_SAMPLING_NOTE_PATH = DOCS_DIR / "infra" / "vllm" / "sampling.md"
+    VLLM_SAMPLING_DRAWIO_PATH = (
+        DOCS_DIR / "assets" / "infra" / "vllm" / "greedy-sampling-flow.drawio"
+    )
+    VLLM_SAMPLING_SVG_PATH = (
+        DOCS_DIR / "assets" / "infra" / "vllm" / "greedy-sampling-flow.svg"
+    )
 
     def test_kv_cache_diagram_has_editable_source_and_accessible_svg(self):
         """The published diagram must stay editable, scalable, and understandable."""
@@ -523,6 +530,51 @@ class InfraNotePilotTests(unittest.TestCase):
             "完整块",
         ):
             self.assertIn(required, markdown)
+
+    def test_greedy_sampling_diagram_has_editable_source_and_accessible_svg(self):
+        """The sampling flow must be editable and readable in the note viewer."""
+        self.assertTrue(self.VLLM_SAMPLING_DRAWIO_PATH.is_file())
+        self.assertTrue(self.VLLM_SAMPLING_SVG_PATH.is_file())
+
+        drawio_root = ET.parse(self.VLLM_SAMPLING_DRAWIO_PATH).getroot()
+        self.assertEqual(drawio_root.tag, "mxfile")
+        self.assertIsNotNone(drawio_root.find("./diagram/mxGraphModel/root"))
+
+        svg_root = ET.parse(self.VLLM_SAMPLING_SVG_PATH).getroot()
+        self.assertEqual(svg_root.attrib.get("viewBox"), "0 0 1200 700")
+        self.assertEqual(svg_root.attrib.get("role"), "img")
+        self.assertEqual(svg_root.attrib.get("aria-labelledby"), "title desc")
+        svg_text = " ".join(svg_root.itertext())
+        for label in (
+            "temperature",
+            "_SAMPLING_EPS",
+            "GREEDY",
+            "all_greedy",
+            "all_random",
+            "argmax",
+            "top-k / top-p",
+            "torch.where",
+        ):
+            self.assertIn(label, svg_text)
+
+    def test_sampling_note_embeds_the_greedy_flow(self):
+        """The note must connect its explanation to the published flowchart."""
+        markdown = self.VLLM_SAMPLING_NOTE_PATH.read_text(encoding="utf-8")
+        self.assertTrue(markdown.startswith("# vLLM Sampling\n"))
+        self.assertIn("## Sampling 解决的问题", markdown)
+        self.assertIn(
+            "![vLLM Greedy Sampling 流程](../../assets/infra/vllm/greedy-sampling-flow.svg)",
+            markdown,
+        )
+        for identifier in (
+            "`temperature`",
+            "`_SAMPLING_EPS`",
+            "`SamplingType.GREEDY`",
+            "`all_greedy`",
+            "`all_random`",
+            "`torch.where`",
+        ):
+            self.assertIn(identifier, markdown)
 
 
 if __name__ == "__main__":
