@@ -55,6 +55,7 @@ class HomepageParser(HTMLParser):
         self.top_level_summaries = []
         self.second_level_summaries = []
         self.local_assets = []
+        self.theme_toggles = []
         self._details_levels = []
         self._summary_level = None
         self._summary_text = []
@@ -94,6 +95,9 @@ class HomepageParser(HTMLParser):
         if "plan-item" in classes:
             self.plan_entries.append(tag)
 
+        if "theme-toggle" in classes:
+            self.theme_toggles.append(tag)
+
         if tag == "details":
             self._details_levels.append(attributes.get("data-level"))
 
@@ -124,6 +128,7 @@ class ViewerDocumentParser(HTMLParser):
         super().__init__()
         self.script_sources = []
         self.local_assets = []
+        self.theme_toggles = []
         self.note_path = None
 
     def handle_starttag(self, tag, attrs):
@@ -138,6 +143,8 @@ class ViewerDocumentParser(HTMLParser):
                 self.local_assets.append(href)
         if tag == "body":
             self.note_path = attributes.get("data-note-path")
+        if "theme-toggle" in set(attributes.get("class", "").split()):
+            self.theme_toggles.append(tag)
 
 
 class NoteTopologyTests(unittest.TestCase):
@@ -166,6 +173,10 @@ class HomepageTests(unittest.TestCase):
         cls.parser = HomepageParser()
         cls.parser.feed((DOCS_DIR / "index.html").read_text(encoding="utf-8"))
         cls.styles = (DOCS_DIR / "style.css").read_text(encoding="utf-8").upper()
+        cls.theme_sources = "\n".join(
+            (DOCS_DIR / path).read_text(encoding="utf-8").upper()
+            for path in ("style.css", "note.css", "script.js", "note.js")
+        )
 
     def test_homepage_contains_only_the_approved_modules(self):
         """Restoring an old Hero, About, or Contact module must fail."""
@@ -212,6 +223,18 @@ class HomepageTests(unittest.TestCase):
             with self.subTest(color=color):
                 self.assertIn(color, self.styles)
 
+    def test_site_is_light_only(self):
+        """Theme controls or dark-mode state would violate the single-theme design."""
+        self.assertFalse(self.parser.theme_toggles)
+        for forbidden in (
+            "DATA-THEME",
+            "SITE-THEME",
+            "PREFERS-COLOR-SCHEME",
+            "COLOR-SCHEME: DARK",
+        ):
+            with self.subTest(forbidden=forbidden):
+                self.assertNotIn(forbidden, self.theme_sources)
+
     def test_local_assets_are_versioned_to_prevent_stale_ui(self):
         """A cached pre-redesign stylesheet must not be mixed with the new HTML."""
         self.assertTrue(self.parser.local_assets)
@@ -236,6 +259,12 @@ class ViewerIntegrationTests(unittest.TestCase):
             parser.script_sources.index("note-paths.js"),
             parser.script_sources.index("note.js"),
         )
+
+    def test_viewers_have_no_theme_toggle(self):
+        """Every note entry point must use the same fixed light site shell."""
+        for page in ("note.html", "llm/ppo.html", "llm/grpo.html", "llm/concepts.html"):
+            with self.subTest(page=page):
+                self.assertFalse(self.parse_document(page).theme_toggles)
 
     def test_compatibility_pages_load_existing_organized_notes(self):
         """A stale embedded path or missing path module would break legacy URLs."""

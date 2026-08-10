@@ -1,7 +1,3 @@
-const storageKey = "site-theme";
-const body = document.body;
-const themeToggle = document.querySelector(".theme-toggle");
-const themeToggleText = document.querySelector(".theme-toggle-text");
 const notesToggle = document.querySelector(".notes-toggle");
 const tocToggle = document.querySelector(".toc-toggle");
 const notesSidebar = document.getElementById("notes-sidebar");
@@ -16,25 +12,6 @@ const header = document.querySelector(".site-header");
 const embeddedMarkdown = document.getElementById("embedded-markdown");
 const sidebarSectionTitle = document.querySelector(".sidebar-section-title");
 const notePaths = globalThis.NotePaths;
-
-function setTheme(theme) {
-  if (theme === "light") {
-    body.setAttribute("data-theme", "light");
-    themeToggleText.textContent = "Light";
-  } else {
-    body.removeAttribute("data-theme");
-    themeToggleText.textContent = "Dark";
-  }
-  localStorage.setItem(storageKey, theme);
-}
-
-function getPreferredTheme() {
-  const storedTheme = localStorage.getItem(storageKey);
-  if (storedTheme) {
-    return storedTheme;
-  }
-  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-}
 
 function updateHeaderState() {
   header.classList.toggle("is-scrolled", window.scrollY > 16);
@@ -496,11 +473,6 @@ async function loadNote() {
   }
 }
 
-themeToggle?.addEventListener("click", () => {
-  const nextTheme = body.getAttribute("data-theme") === "light" ? "dark" : "light";
-  setTheme(nextTheme);
-});
-
 notesToggle?.addEventListener("click", () => {
   togglePanel(notesSidebar, notesToggle);
   togglePanel(tocSidebar, tocToggle, true);
@@ -533,6 +505,5 @@ document.addEventListener("click", (event) => {
 window.addEventListener("scroll", updateHeaderState, { passive: true });
 window.addEventListener("resize", closePanelsOnDesktop);
 
-setTheme(getPreferredTheme());
 updateHeaderState();
 loadNote();

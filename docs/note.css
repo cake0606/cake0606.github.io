@@ -38,15 +38,11 @@
   padding: 0.75rem 1rem;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.42);
+  background: rgba(255, 255, 255, 0.82);
   color: var(--text);
   font: inherit;
   font-weight: 600;
   transition: background-color var(--transition), border-color var(--transition), color var(--transition);
-}
-
-body[data-theme="light"] .panel-toggle {
-  background: rgba(255, 255, 255, 0.82);
 }
 
 .panel-toggle:hover,
@@ -209,10 +205,6 @@ body[data-theme="light"] .panel-toggle {
 
 .toc-nav::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(148, 163, 184, 0.32);
-}
-
-body[data-theme="light"] .toc-nav::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.48);
 }
 
@@ -364,13 +356,6 @@ body[data-theme="light"] .toc-nav::-webkit-scrollbar-thumb {
   scrollbar-color: #45475a var(--code-bg);
 }
 
-body[data-theme="light"] .note-content pre {
-  background:
-    linear-gradient(180deg, rgba(203, 166, 247, 0.1), transparent 24%),
-    var(--code-bg);
-  border-color: var(--code-border);
-}
-
 .note-content code,
 .sidebar-path,
 .note-link-meta {
@@ -379,18 +364,12 @@ body[data-theme="light"] .note-content pre {
 
 .note-content :not(pre) > code {
   padding: 0.16rem 0.42rem;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid #e8dddf;
   border-radius: 7px;
-  background: rgba(148, 163, 184, 0.12);
-  color: #e5e7eb;
+  background: #f4e8ea;
+  color: #8e5f68;
   font-size: 0.92em;
   font-weight: 500;
-}
-
-body[data-theme="light"] .note-content :not(pre) > code {
-  background: #eef1f4;
-  border-color: #d9e0e7;
-  color: #111827;
 }
 
 .note-content pre code {
@@ -639,8 +618,7 @@ body[data-theme="light"] .note-content :not(pre) > code {
     justify-content: stretch;
   }
 
-  .panel-toggle,
-  .theme-toggle {
+  .panel-toggle {
     justify-content: center;
   }
 

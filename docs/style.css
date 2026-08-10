@@ -1,25 +1,4 @@
 :root {
-  color-scheme: dark;
-  --bg: #171416;
-  --bg-elevated: #211b1e;
-  --bg-soft: #2c2427;
-  --surface: #211b1e;
-  --surface-strong: #292124;
-  --border: #46383d;
-  --text: #f3eaed;
-  --text-muted: #b8a8ad;
-  --text-soft: #dacdd1;
-  --accent: #d7a7af;
-  --accent-soft: #9f747c;
-  --accent-pale: #35282c;
-  --accent-mist: #251e20;
-  --shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
-  --container: 760px;
-  --radius: 16px;
-  --transition: 160ms ease;
-}
-
-body[data-theme="light"] {
   color-scheme: light;
   --bg: #ffffff;
   --bg-elevated: #ffffff;
@@ -35,6 +14,9 @@ body[data-theme="light"] {
   --accent-pale: #f4e8ea;
   --accent-mist: #faf5f6;
   --shadow: 0 16px 40px rgba(63, 54, 56, 0.07);
+  --container: 760px;
+  --radius: 16px;
+  --transition: 160ms ease;
 }
 
 *,
@@ -103,13 +85,9 @@ button {
   top: 0;
   z-index: 50;
   border-bottom: 1px solid transparent;
-  background: rgba(23, 20, 22, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(16px);
   transition: border-color var(--transition), background-color var(--transition);
-}
-
-body[data-theme="light"] .site-header {
-  background: rgba(255, 255, 255, 0.96);
 }
 
 .site-header.is-scrolled {
@@ -199,7 +177,6 @@ body[data-theme="light"] .site-header {
   transform: scaleX(1);
 }
 
-.theme-toggle,
 .nav-home {
   display: inline-flex;
   min-height: 40px;
@@ -215,19 +192,10 @@ body[data-theme="light"] .site-header {
   transition: border-color var(--transition), background-color var(--transition), color var(--transition);
 }
 
-.theme-toggle:hover,
 .nav-home:hover {
   border-color: var(--accent-soft);
   background: var(--accent-mist);
   color: var(--accent);
-}
-
-.theme-toggle-icon {
-  width: 0.9rem;
-  height: 0.9rem;
-  border: 2px solid currentColor;
-  border-radius: 50%;
-  box-shadow: inset 0.34rem 0 0 currentColor;
 }
 
 .page-shell {
@@ -407,7 +375,7 @@ body[data-theme="light"] .site-header {
 
   .nav-shell {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.5rem 0.85rem;
     padding: 0.7rem 0;
   }
@@ -421,11 +389,6 @@ body[data-theme="light"] .site-header {
     grid-row: 2;
     justify-content: space-between;
     border-top: 1px solid var(--border);
-  }
-
-  .theme-toggle {
-    grid-column: 2;
-    grid-row: 1;
   }
 
   .section {
@@ -443,7 +406,6 @@ body[data-theme="light"] .site-header {
 }
 
 @media (max-width: 430px) {
-  .theme-toggle-text,
   .brand-text span {
     display: none;
   }
