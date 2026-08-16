@@ -28,6 +28,7 @@
       .bucket-slot { fill: #f0dfe2; stroke: #c69ba3; stroke-width: 1; }
       .ready { fill: #e9f1eb; stroke: #799584; stroke-width: 2; }
       .comm { fill: #f4e8ea; stroke: #a96f7a; stroke-width: 2; }
+      .overlap-note { fill: #edf3f7; stroke: #7893a6; stroke-width: 1.5; stroke-dasharray: 6 5; }
       .flow { fill: none; stroke: #8e5f68; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow); }
       .flow-blue { fill: none; stroke: #708b9e; stroke-width: 2.2; stroke-linecap: round; marker-end: url(#arrow-blue); }
       .guide { stroke: #ddc8cc; stroke-width: 1; stroke-dasharray: 5 6; }
@@ -68,7 +69,7 @@
   <path class="flow" d="M248 212 V238 H700 V258"/>
   <path class="flow" d="M700 212 V258"/>
   <path class="flow" d="M1152 212 V238 H700"/>
-  <text class="small" x="716" y="238">以下展开任意一个 rank 的一次迭代</text>
+  <text class="small" x="732" y="228">以下展开任意一个 rank 的一次迭代</text>
 
   <text class="section" x="44" y="288">计算时间线</text>
   <line class="time" x1="144" y1="312" x2="1334" y2="312"/>
@@ -129,11 +130,13 @@
   <text class="small" x="1255" y="591" text-anchor="middle">所有 rank 的 Bucket 0</text>
   <text class="tiny" x="1255" y="609" text-anchor="middle">底层 Ring 过程见图 2</text>
 
-  <rect class="grad" x="1004" y="626" width="204" height="42" rx="10"/>
+  <rect id="hook-layer-1" class="grad" x="1004" y="626" width="204" height="42" rx="10"/>
   <text class="copy" x="1106" y="652" text-anchor="middle">hook：W₁、b₁ ready</text>
   <path class="flow" d="M1106 668 V696 H916"/>
+  <rect id="overlap-note" class="overlap-note" x="44" y="638" width="540" height="50" rx="12"/>
+  <text class="small" x="314" y="668" text-anchor="middle">并行：Bucket 0 All-Reduce 与 Layer 1 Backward 重叠</text>
   <g aria-label="gradient bucket 1">
-    <rect class="bucket" x="624" y="680" width="292" height="84" rx="15"/>
+    <rect id="gradient-bucket-1" class="bucket" x="624" y="680" width="292" height="84" rx="15"/>
     <text class="label" x="648" y="707">Gradient Bucket 1</text>
     <rect class="bucket-slot" x="648" y="720" width="116" height="28" rx="7"/>
     <rect class="bucket-slot" x="776" y="720" width="116" height="28" rx="7"/>
@@ -153,7 +156,4 @@
   <rect class="rank" x="782" y="786" width="328" height="54" rx="14"/>
   <text class="label" x="946" y="809" text-anchor="middle">每个 rank 执行 optimizer.step()</text>
   <text class="small" x="946" y="829" text-anchor="middle">相同初始参数 + 相同平均梯度 → 参数继续一致</text>
-
-  <path d="M976 624 V660 H1138 V626" fill="none" stroke="#708b9e" stroke-width="2" stroke-dasharray="6 5"/>
-  <text class="small" x="1057" y="657" text-anchor="middle">通信 Bucket 0 时，Backward Layer 1 仍可继续</text>
 </svg>

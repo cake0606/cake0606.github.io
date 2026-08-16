@@ -169,6 +169,15 @@ def collinear_overlap_length(first, second):
     return 0
 
 
+def bounds_overlap(first, second):
+    first_left, first_top, first_right, first_bottom = first
+    second_left, second_top, second_right, second_bottom = second
+    return (
+        max(first_left, second_left) < min(first_right, second_right)
+        and max(first_top, second_top) < min(first_bottom, second_bottom)
+    )
+
+
 class HomepageParser(HTMLParser):
     def __init__(self):
         super().__init__()
@@ -649,6 +658,88 @@ class InfraNotePilotTests(unittest.TestCase):
         / "vllm"
         / "greedy-random-sampling-flow.svg"
     )
+    DDP_NOTE_PATH = DOCS_DIR / "infra" / "distributed" / "DP-DDP.md"
+    DDP_BUCKET_SVG_PATH = (
+        DOCS_DIR / "assets" / "infra" / "distributed" / "ddp-bucket-overlap.svg"
+    )
+    RING_BUCKET_SVG_PATH = (
+        DOCS_DIR
+        / "assets"
+        / "infra"
+        / "distributed"
+        / "ring-all-reduce-bucket.svg"
+    )
+
+    def test_distributed_note_references_accessible_svgs(self):
+        markdown = self.DDP_NOTE_PATH.read_text(encoding="utf-8")
+        expected_svgs = (
+            (self.DDP_BUCKET_SVG_PATH, "0 0 1400 860", "ddp-bucket-overlap.svg"),
+            (self.RING_BUCKET_SVG_PATH, "0 0 1400 820", "ring-all-reduce-bucket.svg"),
+        )
+        for svg_path, view_box, filename in expected_svgs:
+            with self.subTest(svg=filename):
+                self.assertTrue(svg_path.is_file())
+                self.assertIn(f"../../assets/infra/distributed/{filename}", markdown)
+                svg_root = ET.parse(svg_path).getroot()
+                self.assertEqual(svg_root.attrib.get("viewBox"), view_box)
+                self.assertEqual(svg_root.attrib.get("role"), "img")
+                self.assertEqual(svg_root.attrib.get("aria-labelledby"), "title desc")
+                self.assertIsNotNone(svg_root.find(f"{SVG_NAMESPACE}title"))
+                self.assertIsNotNone(svg_root.find(f"{SVG_NAMESPACE}desc"))
+
+                ids = {
+                    element.attrib["id"]
+                    for element in svg_root.iter()
+                    if "id" in element.attrib
+                }
+                reference_sources = [
+                    value
+                    for element in svg_root.iter()
+                    for value in element.attrib.values()
+                ]
+                reference_sources.extend(text for text in svg_root.itertext() if text)
+                references = {
+                    match.group(1)
+                    for source in reference_sources
+                    for match in re.finditer(r"url\(#([^\)]+)\)", source)
+                }
+                self.assertLessEqual(references, ids)
+
+    def test_ddp_overlap_note_clears_hook_and_bucket_nodes(self):
+        svg_root = ET.parse(self.DDP_BUCKET_SVG_PATH).getroot()
+        rectangles = {
+            element.attrib["id"]: element
+            for element in svg_root.iter(f"{SVG_NAMESPACE}rect")
+            if "id" in element.attrib
+        }
+        required = {"hook-layer-1", "gradient-bucket-1", "overlap-note"}
+        self.assertLessEqual(required, set(rectangles))
+
+        overlap_bounds = svg_node_bounds(rectangles["overlap-note"])
+        for node_id in ("hook-layer-1", "gradient-bucket-1"):
+            self.assertFalse(
+                bounds_overlap(overlap_bounds, svg_node_bounds(rectangles[node_id])),
+                f"overlap note intersects {node_id}",
+            )
+
+        svg_text = " ".join(svg_root.itertext())
+        self.assertIn(
+            "并行：Bucket 0 All-Reduce 与 Layer 1 Backward 重叠",
+            svg_text,
+        )
+
+    def test_ddp_rank_expansion_note_clears_merge_arrow(self):
+        svg_root = ET.parse(self.DDP_BUCKET_SVG_PATH).getroot()
+        expansion_note = next(
+            element
+            for element in svg_root.iter(f"{SVG_NAMESPACE}text")
+            if (element.text or "").strip() == "以下展开任意一个 rank 的一次迭代"
+        )
+        note_x = float(expansion_note.attrib["x"])
+        note_y = float(expansion_note.attrib["y"])
+
+        self.assertGreaterEqual(note_x - 700, 32)
+        self.assertLessEqual(note_y, 228)
 
     def test_kv_cache_diagram_has_editable_source_and_accessible_svg(self):
         """The published diagram must stay editable, scalable, and understandable."""
