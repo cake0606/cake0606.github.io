@@ -41,6 +41,17 @@ test("returns the sibling collection for an organized note", () => {
     NotePaths.getCollectionForPath("infra/vllm/sampling.md").items.map((item) => item.path),
     ["infra/vllm/sampling.md"]
   );
+  assert.deepEqual(
+    NotePaths.getCollectionForPath("infra/distributed/DP-DDP.md").items.map(
+      (item) => item.path
+    ),
+    [
+      "infra/distributed/基础.md",
+      "infra/distributed/DP-DDP.md",
+      "infra/distributed/deepspeed.md",
+      "infra/distributed/tp-ep-pp.md"
+    ]
+  );
   assert.equal(NotePaths.getCollectionForPath("unlisted/note.md"), null);
 });
 
@@ -67,6 +78,14 @@ test("resolves relative note assets from the Markdown source directory", () => {
   assert.equal(
     NotePaths.resolveNoteAssetHref(notePath, assetHref, "../"),
     "../assets/infra/nano-vllm/kv-cache-dataflow.svg"
+  );
+  assert.equal(
+    NotePaths.resolveNoteAssetHref(
+      "infra/distributed/DP-DDP.md",
+      "../../assets/infra/distributed/ddp-bucket-overlap.svg",
+      ""
+    ),
+    "assets/infra/distributed/ddp-bucket-overlap.svg"
   );
 });
 

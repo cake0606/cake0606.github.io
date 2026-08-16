@@ -18,6 +18,15 @@
         { title: "CUDA Basics", path: "infra/cuda/基础.md" }
       ]
     },
+    "infra/distributed": {
+      title: "Distributed",
+      items: [
+        { title: "Distributed Basics", path: "infra/distributed/基础.md" },
+        { title: "DP & DDP", path: "infra/distributed/DP-DDP.md" },
+        { title: "DeepSpeed", path: "infra/distributed/deepspeed.md" },
+        { title: "TP, EP & PP", path: "infra/distributed/tp-ep-pp.md" }
+      ]
+    },
     "infra/nano-vllm": {
       title: "nano-vLLM",
       items: [

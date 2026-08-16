@@ -44,6 +44,10 @@ EXPECTED_NOTE_PATHS = (
     "infra/cuda/elementwise.md",
     "infra/cuda/点乘_softmax_norm.md",
     "infra/cuda/基础.md",
+    "infra/distributed/基础.md",
+    "infra/distributed/DP-DDP.md",
+    "infra/distributed/deepspeed.md",
+    "infra/distributed/tp-ep-pp.md",
     "infra/nano-vllm/kvcache_and_paged_attention.md",
     "infra/nano-vllm/llm_engine.md",
     "infra/nano-vllm/ModelRunner.md",
@@ -76,6 +80,7 @@ MOVED_LLM_MARKDOWN = (
 
 EMPTY_NOTE_PATHS = (
     "infra/cuda/点乘_softmax_norm.md",
+    "infra/distributed/deepspeed.md",
     "llm/concepts/concepts.md",
     "llm/concepts/gae.md",
     "llm/concepts/index.md",
@@ -440,7 +445,14 @@ class HomepageTests(unittest.TestCase):
         self.assertEqual(self.parser.top_level_summaries, ["Infra", "LLM"])
         self.assertEqual(
             self.parser.second_level_summaries,
-            ["CUDA", "nano-vLLM", "vLLM", "RL", "Concepts"],
+            [
+                "CUDA",
+                "Distributed",
+                "nano-vLLM",
+                "vLLM",
+                "RL",
+                "Concepts",
+            ],
         )
 
     def test_every_organized_note_is_linked_once_and_resolves(self):
