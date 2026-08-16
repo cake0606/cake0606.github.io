@@ -25,6 +25,8 @@ EXPECTED_PLAN_GROUPS = (
             "chunked prefill",
             "cuda graph",
             "triton",
+            "DP、DDP",
+            "DeepSpeed",
             "tp、pp、ep",
             "性能指标与分析工具",
         ),
@@ -38,6 +40,8 @@ EXPECTED_PLAN_GROUPS = (
         ),
     ),
 )
+
+EXPECTED_COMPLETED_PLAN_ITEMS = {("infra", "DP、DDP")}
 
 EXPECTED_NOTE_PATHS = (
     "infra/cuda/cuda内存.md",
@@ -438,7 +442,14 @@ class HomepageTests(unittest.TestCase):
                     self.assertIsInstance(item["text"], str)
                     self.assertTrue(item["text"].strip())
                     self.assertIs(type(item["completed"]), bool)
-                    self.assertFalse(item["completed"])
+
+        actual_completed = {
+            (group["title"], item["text"])
+            for group in self.plan_data
+            for item in group["items"]
+            if item["completed"]
+        }
+        self.assertEqual(actual_completed, EXPECTED_COMPLETED_PLAN_ITEMS)
 
     def test_note_tree_exposes_the_approved_directory_levels(self):
         """Flattening or omitting either directory level must fail."""

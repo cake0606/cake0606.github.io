@@ -13,6 +13,8 @@
       { "text": "chunked prefill", "completed": false },
       { "text": "cuda graph", "completed": false },
       { "text": "triton", "completed": false },
+      { "text": "DP、DDP", "completed": true },
+      { "text": "DeepSpeed", "completed": false },
       { "text": "tp、pp、ep", "completed": false },
       { "text": "性能指标与分析工具", "completed": false }
     ]
