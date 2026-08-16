@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 860" role="img" aria-labelledby="title desc">
+  <title id="title">DDP 参数、Forward、Backward 与 Gradient Bucket 流程</title>
+  <desc id="desc">每个 rank 保存完整模型并处理不同数据。Backward 从输出侧向输入侧计算梯度，参数的 autograd hook 通知 Reducer；一个 gradient bucket 全部就绪后，按固定顺序异步发起 All-Reduce，并与后续 Backward 计算重叠。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#8e5f68"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#708b9e"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-15%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#705b60" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .canvas { fill: #ffffff; }
+      .title { fill: #3f3638; font: 700 27px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .subtitle { fill: #776b6e; font: 13px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .section { fill: #8e5f68; font: 700 15px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; letter-spacing: .06em; }
+      .label { fill: #3f3638; font: 700 15px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .copy { fill: #62575a; font: 13px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .small { fill: #6f6366; font: 12px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .tiny { fill: #6f6366; font: 11px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .rank { fill: #faf5f6; stroke: #b98991; stroke-width: 2; filter: url(#shadow); }
+      .compute { fill: #edf3f7; stroke: #7893a6; stroke-width: 2; }
+      .compute-strong { fill: #dfeaf1; stroke: #708b9e; stroke-width: 2; }
+      .grad { fill: #f7f1f2; stroke: #c69ba3; stroke-width: 1.5; }
+      .bucket { fill: #fcf8f9; stroke: #b98991; stroke-width: 2; filter: url(#shadow); }
+      .bucket-slot { fill: #f0dfe2; stroke: #c69ba3; stroke-width: 1; }
+      .ready { fill: #e9f1eb; stroke: #799584; stroke-width: 2; }
+      .comm { fill: #f4e8ea; stroke: #a96f7a; stroke-width: 2; }
+      .flow { fill: none; stroke: #8e5f68; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow); }
+      .flow-blue { fill: none; stroke: #708b9e; stroke-width: 2.2; stroke-linecap: round; marker-end: url(#arrow-blue); }
+      .guide { stroke: #ddc8cc; stroke-width: 1; stroke-dasharray: 5 6; }
+      .time { stroke: #9a8d90; stroke-width: 1.5; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="canvas" width="1400" height="860"/>
+  <text class="title" x="44" y="44">DDP：从参数梯度到 Bucket All-Reduce</text>
+  <text class="subtitle" x="1356" y="43" text-anchor="end">主线：模型副本 → 本地计算 → hook → Reducer → bucket → 异步通信</text>
+
+  <text class="section" x="44" y="84">每个 RANK 保存完整模型，只切分数据</text>
+  <g aria-label="rank 0">
+    <rect class="rank" x="44" y="100" width="408" height="112" rx="16"/>
+    <text class="label" x="68" y="130">rank 0 · GPU 0</text>
+    <text class="copy" x="68" y="157">完整参数 θ = {W₁,b₁,W₂,b₂,W₃,b₃}</text>
+    <rect class="compute" x="68" y="174" width="112" height="24" rx="8"/>
+    <text class="small" x="124" y="191" text-anchor="middle">local batch₀</text>
+    <text class="small" x="200" y="191">独立 optimizer</text>
+  </g>
+  <g aria-label="rank 1">
+    <rect class="rank" x="496" y="100" width="408" height="112" rx="16"/>
+    <text class="label" x="520" y="130">rank 1 · GPU 1</text>
+    <text class="copy" x="520" y="157">完整参数 θ = {W₁,b₁,W₂,b₂,W₃,b₃}</text>
+    <rect class="compute" x="520" y="174" width="112" height="24" rx="8"/>
+    <text class="small" x="576" y="191" text-anchor="middle">local batch₁</text>
+    <text class="small" x="652" y="191">独立 optimizer</text>
+  </g>
+  <g aria-label="rank 2">
+    <rect class="rank" x="948" y="100" width="408" height="112" rx="16"/>
+    <text class="label" x="972" y="130">rank 2 · GPU 2</text>
+    <text class="copy" x="972" y="157">完整参数 θ = {W₁,b₁,W₂,b₂,W₃,b₃}</text>
+    <rect class="compute" x="972" y="174" width="112" height="24" rx="8"/>
+    <text class="small" x="1028" y="191" text-anchor="middle">local batch₂</text>
+    <text class="small" x="1104" y="191">独立 optimizer</text>
+  </g>
+
+  <path class="flow" d="M248 212 V238 H700 V258"/>
+  <path class="flow" d="M700 212 V258"/>
+  <path class="flow" d="M1152 212 V238 H700"/>
+  <text class="small" x="716" y="238">以下展开任意一个 rank 的一次迭代</text>
+
+  <text class="section" x="44" y="288">计算时间线</text>
+  <line class="time" x1="144" y1="312" x2="1334" y2="312"/>
+  <text class="small" x="74" y="317">时间</text>
+
+  <rect class="compute" x="144" y="332" width="196" height="72" rx="14"/>
+  <text class="label" x="242" y="363" text-anchor="middle">Forward</text>
+  <text class="small" x="242" y="385" text-anchor="middle">Layer 1 → 2 → 3</text>
+  <path class="flow-blue" d="M340 368 H375"/>
+  <rect class="compute" x="380" y="332" width="116" height="72" rx="14"/>
+  <text class="label" x="438" y="363" text-anchor="middle">Loss</text>
+  <text class="small" x="438" y="385" text-anchor="middle">local loss</text>
+  <path class="flow-blue" d="M496 368 H531"/>
+
+  <rect class="compute-strong" x="536" y="332" width="204" height="72" rx="14"/>
+  <text class="label" x="638" y="361" text-anchor="middle">Backward · Layer 3</text>
+  <text class="small" x="638" y="385" text-anchor="middle">grad(W₃), grad(b₃) 先就绪</text>
+  <path class="flow-blue" d="M740 368 H765"/>
+  <rect class="compute-strong" x="770" y="332" width="204" height="72" rx="14"/>
+  <text class="label" x="872" y="361" text-anchor="middle">Backward · Layer 2</text>
+  <text class="small" x="872" y="385" text-anchor="middle">grad(W₂), grad(b₂) 就绪</text>
+  <path class="flow-blue" d="M974 368 H999"/>
+  <rect class="compute-strong" x="1004" y="332" width="204" height="72" rx="14"/>
+  <text class="label" x="1106" y="361" text-anchor="middle">Backward · Layer 1</text>
+  <text class="small" x="1106" y="385" text-anchor="middle">grad(W₁), grad(b₁) 后就绪</text>
+
+  <line class="guide" x1="638" y1="404" x2="638" y2="458"/>
+  <line class="guide" x1="872" y1="404" x2="872" y2="458"/>
+  <line class="guide" x1="1106" y1="404" x2="1106" y2="608"/>
+
+  <text class="section" x="44" y="448">AUTOGRAD HOOK 与 REDUCER</text>
+  <rect class="grad" x="536" y="464" width="178" height="42" rx="10"/>
+  <text class="copy" x="625" y="490" text-anchor="middle">hook：W₃、b₃ ready</text>
+  <rect class="grad" x="730" y="464" width="178" height="42" rx="10"/>
+  <text class="copy" x="819" y="490" text-anchor="middle">hook：W₂、b₂ ready</text>
+  <path class="flow" d="M625 506 V534"/>
+  <path class="flow" d="M819 506 V534"/>
+
+  <g aria-label="gradient bucket 0">
+    <rect class="bucket" x="430" y="538" width="486" height="86" rx="15"/>
+    <text class="label" x="454" y="565">Gradient Bucket 0</text>
+    <rect class="bucket-slot" x="454" y="578" width="100" height="29" rx="7"/>
+    <rect class="bucket-slot" x="564" y="578" width="96" height="29" rx="7"/>
+    <rect class="bucket-slot" x="670" y="578" width="100" height="29" rx="7"/>
+    <rect class="bucket-slot" x="780" y="578" width="112" height="29" rx="7"/>
+    <text class="tiny" x="504" y="597" text-anchor="middle">grad(W₃)</text>
+    <text class="tiny" x="612" y="597" text-anchor="middle">grad(b₃)</text>
+    <text class="tiny" x="720" y="597" text-anchor="middle">grad(W₂)</text>
+    <text class="tiny" x="836" y="597" text-anchor="middle">grad(b₂)</text>
+  </g>
+  <path class="flow" d="M916 581 H946"/>
+  <rect class="ready" x="952" y="548" width="166" height="66" rx="14"/>
+  <text class="label" x="1035" y="575" text-anchor="middle">Bucket 0 ready</text>
+  <text class="small" x="1035" y="597" text-anchor="middle">轮到它时发起通信</text>
+  <path class="flow" d="M1118 581 H1148"/>
+  <rect class="comm" x="1154" y="538" width="202" height="86" rx="15"/>
+  <text class="label" x="1255" y="568" text-anchor="middle">异步 All-Reduce</text>
+  <text class="small" x="1255" y="591" text-anchor="middle">所有 rank 的 Bucket 0</text>
+  <text class="tiny" x="1255" y="609" text-anchor="middle">底层 Ring 过程见图 2</text>
+
+  <rect class="grad" x="1004" y="626" width="204" height="42" rx="10"/>
+  <text class="copy" x="1106" y="652" text-anchor="middle">hook：W₁、b₁ ready</text>
+  <path class="flow" d="M1106 668 V696 H916"/>
+  <g aria-label="gradient bucket 1">
+    <rect class="bucket" x="624" y="680" width="292" height="84" rx="15"/>
+    <text class="label" x="648" y="707">Gradient Bucket 1</text>
+    <rect class="bucket-slot" x="648" y="720" width="116" height="28" rx="7"/>
+    <rect class="bucket-slot" x="776" y="720" width="116" height="28" rx="7"/>
+    <text class="tiny" x="706" y="739" text-anchor="middle">grad(W₁)</text>
+    <text class="tiny" x="834" y="739" text-anchor="middle">grad(b₁)</text>
+  </g>
+  <path class="flow" d="M916 722 H952"/>
+  <rect class="comm" x="958" y="680" width="198" height="84" rx="15"/>
+  <text class="label" x="1057" y="712" text-anchor="middle">All-Reduce Bucket 1</text>
+  <text class="small" x="1057" y="737" text-anchor="middle">固定 bucket 顺序</text>
+  <path class="flow" d="M1156 722 H1186"/>
+  <rect class="ready" x="1192" y="680" width="164" height="84" rx="15"/>
+  <text class="label" x="1274" y="711" text-anchor="middle">等待全部完成</text>
+  <text class="small" x="1274" y="735" text-anchor="middle">同步梯度写入 .grad</text>
+
+  <path class="flow" d="M1274 764 V794 H1110"/>
+  <rect class="rank" x="782" y="786" width="328" height="54" rx="14"/>
+  <text class="label" x="946" y="809" text-anchor="middle">每个 rank 执行 optimizer.step()</text>
+  <text class="small" x="946" y="829" text-anchor="middle">相同初始参数 + 相同平均梯度 → 参数继续一致</text>
+
+  <path d="M976 624 V660 H1138 V626" fill="none" stroke="#708b9e" stroke-width="2" stroke-dasharray="6 5"/>
+  <text class="small" x="1057" y="657" text-anchor="middle">通信 Bucket 0 时，Backward Layer 1 仍可继续</text>
+</svg>

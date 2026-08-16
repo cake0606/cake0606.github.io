@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+  <title id="title">一个 Gradient Bucket 的 Ring All-Reduce</title>
+  <desc id="desc">四个 rank 上同一个就绪的 gradient bucket 被切成四个 chunk。Ring Reduce-Scatter 经过三轮使每个 rank 保留一个完成全局归约的 chunk，Ring All-Gather 再经过三轮使所有 rank 获得完整的归约结果。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#8e5f68"/>
+    </marker>
+    <filter id="shadow" x="-12%" y="-18%" width="124%" height="145%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#705b60" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .canvas { fill: #ffffff; }
+      .title { fill: #3f3638; font: 700 27px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .subtitle { fill: #776b6e; font: 13px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .section-title { fill: #8e5f68; font: 700 17px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; letter-spacing: .04em; }
+      .label { fill: #3f3638; font: 700 15px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .copy { fill: #62575a; font: 13px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .small { fill: #6f6366; font: 12px Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+      .rank { fill: #faf5f6; stroke: #b98991; stroke-width: 2; filter: url(#shadow); }
+      .phase-rs { fill: #f7f1f2; stroke: #c69ba3; stroke-width: 2; }
+      .phase-ag { fill: #edf3f7; stroke: #7893a6; stroke-width: 2; }
+      .result { fill: #e9f1eb; stroke: #799584; stroke-width: 2; }
+      .a { fill: #ecd8dc; stroke: #b98991; }
+      .b { fill: #eadfce; stroke: #b29a73; }
+      .c { fill: #dce8ee; stroke: #7893a6; }
+      .d { fill: #dfeade; stroke: #799584; }
+      .chunk { stroke-width: 1.3; }
+      .flow { fill: none; stroke: #8e5f68; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow); }
+      .ring { fill: none; stroke: #a96f7a; stroke-width: 2.5; marker-end: url(#arrow); }
+      .divider { stroke: #dcc7cb; stroke-width: 1; stroke-dasharray: 6 6; }
+    </style>
+  </defs>
+
+  <rect class="canvas" width="1400" height="820"/>
+  <text class="title" x="44" y="44">一个 Gradient Bucket 如何执行 Ring All-Reduce</text>
+  <text class="subtitle" x="1356" y="43" text-anchor="end">示例：P = 4，通信方向为 rank 0 → 1 → 2 → 3 → 0</text>
+
+  <text class="section-title" x="44" y="86">1 · 同一 BUCKET 在各 RANK 上就绪</text>
+  <g transform="translate(44 102)">
+    <rect class="rank" width="304" height="104" rx="15"/>
+    <text class="label" x="18" y="29">rank 0 · Bucket k</text>
+    <g transform="translate(18 48)">
+      <rect class="chunk a" x="0" y="0" width="62" height="35" rx="7"/><rect class="chunk b" x="68" y="0" width="62" height="35" rx="7"/><rect class="chunk c" x="136" y="0" width="62" height="35" rx="7"/><rect class="chunk d" x="204" y="0" width="62" height="35" rx="7"/>
+      <text class="small" x="31" y="23" text-anchor="middle">A₀</text><text class="small" x="99" y="23" text-anchor="middle">B₀</text><text class="small" x="167" y="23" text-anchor="middle">C₀</text><text class="small" x="235" y="23" text-anchor="middle">D₀</text>
+    </g>
+  </g>
+  <g transform="translate(380 102)">
+    <rect class="rank" width="304" height="104" rx="15"/>
+    <text class="label" x="18" y="29">rank 1 · Bucket k</text>
+    <g transform="translate(18 48)">
+      <rect class="chunk a" x="0" y="0" width="62" height="35" rx="7"/><rect class="chunk b" x="68" y="0" width="62" height="35" rx="7"/><rect class="chunk c" x="136" y="0" width="62" height="35" rx="7"/><rect class="chunk d" x="204" y="0" width="62" height="35" rx="7"/>
+      <text class="small" x="31" y="23" text-anchor="middle">A₁</text><text class="small" x="99" y="23" text-anchor="middle">B₁</text><text class="small" x="167" y="23" text-anchor="middle">C₁</text><text class="small" x="235" y="23" text-anchor="middle">D₁</text>
+    </g>
+  </g>
+  <g transform="translate(716 102)">
+    <rect class="rank" width="304" height="104" rx="15"/>
+    <text class="label" x="18" y="29">rank 2 · Bucket k</text>
+    <g transform="translate(18 48)">
+      <rect class="chunk a" x="0" y="0" width="62" height="35" rx="7"/><rect class="chunk b" x="68" y="0" width="62" height="35" rx="7"/><rect class="chunk c" x="136" y="0" width="62" height="35" rx="7"/><rect class="chunk d" x="204" y="0" width="62" height="35" rx="7"/>
+      <text class="small" x="31" y="23" text-anchor="middle">A₂</text><text class="small" x="99" y="23" text-anchor="middle">B₂</text><text class="small" x="167" y="23" text-anchor="middle">C₂</text><text class="small" x="235" y="23" text-anchor="middle">D₂</text>
+    </g>
+  </g>
+  <g transform="translate(1052 102)">
+    <rect class="rank" width="304" height="104" rx="15"/>
+    <text class="label" x="18" y="29">rank 3 · Bucket k</text>
+    <g transform="translate(18 48)">
+      <rect class="chunk a" x="0" y="0" width="62" height="35" rx="7"/><rect class="chunk b" x="68" y="0" width="62" height="35" rx="7"/><rect class="chunk c" x="136" y="0" width="62" height="35" rx="7"/><rect class="chunk d" x="204" y="0" width="62" height="35" rx="7"/>
+      <text class="small" x="31" y="23" text-anchor="middle">A₃</text><text class="small" x="99" y="23" text-anchor="middle">B₃</text><text class="small" x="167" y="23" text-anchor="middle">C₃</text><text class="small" x="235" y="23" text-anchor="middle">D₃</text>
+    </g>
+  </g>
+
+  <path class="flow" d="M700 218 V246"/>
+  <text class="small" x="716" y="239">Reducer 按固定 bucket 顺序调用 ProcessGroup All-Reduce</text>
+
+  <rect class="phase-rs" x="44" y="258" width="640" height="330" rx="20"/>
+  <text class="section-title" x="70" y="292">2 · RING REDUCE-SCATTER</text>
+  <text class="copy" x="70" y="317">P−1 = 3 轮；每轮发送一个 chunk，并将收到的部分结果继续归约</text>
+
+  <g aria-label="reduce scatter ring">
+    <rect class="rank" x="296" y="352" width="136" height="56" rx="13"/>
+    <rect class="rank" x="478" y="434" width="136" height="56" rx="13"/>
+    <rect class="rank" x="296" y="516" width="136" height="56" rx="13"/>
+    <rect class="rank" x="114" y="434" width="136" height="56" rx="13"/>
+    <text class="label" x="364" y="386" text-anchor="middle">rank 0</text>
+    <text class="label" x="546" y="468" text-anchor="middle">rank 1</text>
+    <text class="label" x="364" y="550" text-anchor="middle">rank 2</text>
+    <text class="label" x="182" y="468" text-anchor="middle">rank 3</text>
+    <path class="ring" d="M432 380 Q530 374 548 424"/>
+    <path class="ring" d="M546 490 Q520 538 442 544"/>
+    <path class="ring" d="M296 544 Q210 536 186 500"/>
+    <path class="ring" d="M182 434 Q205 386 286 380"/>
+    <text class="small" x="364" y="446" text-anchor="middle">每轮：send → recv → reduce</text>
+    <text class="small" x="364" y="466" text-anchor="middle">转发部分归约结果</text>
+  </g>
+
+  <text class="copy" x="70" y="610">阶段结果：</text>
+  <g transform="translate(164 594)">
+    <rect class="chunk b" x="0" y="0" width="102" height="38" rx="8"/><rect class="chunk c" x="112" y="0" width="102" height="38" rx="8"/><rect class="chunk d" x="224" y="0" width="102" height="38" rx="8"/><rect class="chunk a" x="336" y="0" width="102" height="38" rx="8"/>
+    <text class="small" x="51" y="24" text-anchor="middle">r0: B=ΣBᵢ</text><text class="small" x="163" y="24" text-anchor="middle">r1: C=ΣCᵢ</text><text class="small" x="275" y="24" text-anchor="middle">r2: D=ΣDᵢ</text><text class="small" x="387" y="24" text-anchor="middle">r3: A=ΣAᵢ</text>
+  </g>
+
+  <path class="flow" d="M684 424 H716"/>
+
+  <rect class="phase-ag" x="716" y="258" width="640" height="330" rx="20"/>
+  <text class="section-title" x="742" y="292">3 · RING ALL-GATHER</text>
+  <text class="copy" x="742" y="317">P−1 = 3 轮；不再归约，只转发上一轮收到的完整结果 chunk</text>
+
+  <g aria-label="all gather ring">
+    <rect class="rank" x="968" y="352" width="136" height="56" rx="13"/>
+    <rect class="rank" x="1150" y="434" width="136" height="56" rx="13"/>
+    <rect class="rank" x="968" y="516" width="136" height="56" rx="13"/>
+    <rect class="rank" x="786" y="434" width="136" height="56" rx="13"/>
+    <text class="label" x="1036" y="386" text-anchor="middle">rank 0 · B</text>
+    <text class="label" x="1218" y="468" text-anchor="middle">rank 1 · C</text>
+    <text class="label" x="1036" y="550" text-anchor="middle">rank 2 · D</text>
+    <text class="label" x="854" y="468" text-anchor="middle">rank 3 · A</text>
+    <path class="ring" d="M1104 380 Q1202 374 1220 424"/>
+    <path class="ring" d="M1218 490 Q1192 538 1114 544"/>
+    <path class="ring" d="M968 544 Q882 536 858 500"/>
+    <path class="ring" d="M854 434 Q877 386 958 380"/>
+    <text class="small" x="1036" y="446" text-anchor="middle">每轮：send → recv → save</text>
+    <text class="small" x="1036" y="466" text-anchor="middle">最终每个 rank 收齐 A、B、C、D</text>
+  </g>
+
+  <text class="copy" x="742" y="610">阶段结果：</text>
+  <rect class="result" x="842" y="594" width="400" height="48" rx="11"/>
+  <text class="label" x="1042" y="624" text-anchor="middle">所有 rank：[A, B, C, D]，其中 A=ΣAᵢ，…，D=ΣDᵢ</text>
+
+  <line class="divider" x1="44" y1="666" x2="1356" y2="666"/>
+  <text class="section-title" x="44" y="706">4 · 通信量</text>
+  <text class="copy" x="44" y="738">设完整 bucket 大小为 M byte。每轮每个 rank 发送 M/P，两个阶段各有 P−1 轮：</text>
+  <rect class="rank" x="44" y="758" width="584" height="44" rx="11"/>
+  <text class="label" x="336" y="786" text-anchor="middle">每个 rank 发送量：2(P−1)M/P</text>
+  <rect class="rank" x="650" y="758" width="412" height="44" rx="11"/>
+  <text class="label" x="856" y="786" text-anchor="middle">总轮数：2(P−1)</text>
+  <rect class="rank" x="1084" y="758" width="272" height="44" rx="11"/>
+  <text class="label" x="1220" y="786" text-anchor="middle">P=4 时：6 轮</text>
+</svg>
