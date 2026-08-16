@@ -304,11 +304,18 @@ Add these methods to `InfraNotePilotTests`:
                     for element in svg_root.iter()
                     if "id" in element.attrib
                 }
-                references = {
-                    match.group(1)
+                reference_sources = [
+                    value
                     for element in svg_root.iter()
                     for value in element.attrib.values()
-                    for match in re.finditer(r"url\(#([^\)]+)\)", value)
+                ]
+                reference_sources.extend(
+                    text for text in svg_root.itertext() if text
+                )
+                references = {
+                    match.group(1)
+                    for source in reference_sources
+                    for match in re.finditer(r"url\(#([^\)]+)\)", source)
                 }
                 self.assertLessEqual(references, ids)
 
