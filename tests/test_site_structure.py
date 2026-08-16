@@ -191,9 +191,13 @@ class HomepageParser(HTMLParser):
         self.second_level_summaries = []
         self.local_assets = []
         self.theme_toggles = []
+        self.document_title = []
+        self.meta_descriptions = []
+        self.text_content = []
         self._details_levels = []
         self._summary_level = None
         self._summary_text = []
+        self._inside_title = False
 
     @staticmethod
     def _attributes(attrs):
@@ -206,6 +210,12 @@ class HomepageParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         attributes = self._attributes(attrs)
         classes = self._classes(attributes)
+
+        if tag == "title":
+            self._inside_title = True
+
+        if tag == "meta" and attributes.get("name") == "description":
+            self.meta_descriptions.append(attributes.get("content", ""))
 
         if attributes.get("id") == "plan-groups":
             self.plan_mounts.append((tag, attributes))
@@ -244,10 +254,16 @@ class HomepageParser(HTMLParser):
             self._summary_text = []
 
     def handle_data(self, data):
+        self.text_content.append(data)
+        if self._inside_title:
+            self.document_title.append(data)
         if self._summary_level is not None:
             self._summary_text.append(data)
 
     def handle_endtag(self, tag):
+        if tag == "title":
+            self._inside_title = False
+
         if tag == "summary" and self._summary_level is not None:
             label = " ".join("".join(self._summary_text).split())
             if self._summary_level == "1":
@@ -408,6 +424,14 @@ class HomepageTests(unittest.TestCase):
     def test_homepage_contains_only_the_approved_modules(self):
         """Restoring an old Hero, About, or Contact module must fail."""
         self.assertEqual(self.parser.section_ids, ["projects", "notes", "plan"])
+
+    def test_homepage_uses_anonymous_branding(self):
+        """The homepage must not expose the owner's name in UI or metadata."""
+        self.assertEqual("".join(self.parser.document_title).strip(), "zzz")
+        rendered_content = " ".join(
+            self.parser.text_content + self.parser.meta_descriptions
+        )
+        self.assertNotIn("Jie Zheng", rendered_content)
 
     def test_primary_navigation_targets_the_three_modules(self):
         """A missing or stale navigation link must fail."""
