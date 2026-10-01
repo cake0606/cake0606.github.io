@@ -1,0 +1,11 @@
+## 文件复制、移动、删除
+通过touch命令创建文件
+```
+test/linux/d1
+> touch a.md
+
+test/linux/d1
+> ls
+a.md
+```
+
